@@ -125,6 +125,7 @@ class DocumentMetadataKeysEnum(str, Enum):
     """
 
     SEC_DOCUMENT = "sec_document"
+    CLINICAL_GUIDELINE = "clinical_guideline"
 
 
 class SecDocumentTypeEnum(str, Enum):
@@ -134,6 +135,19 @@ class SecDocumentTypeEnum(str, Enum):
 
     TEN_K = "10-K"
     TEN_Q = "10-Q"
+
+
+class EvidenceGradeEnum(str, Enum):
+    """Enum for clinical guideline evidence grades"""
+    
+    GRADE_A = "A"  # High quality evidence
+    GRADE_B = "B"  # Moderate quality evidence
+    GRADE_C = "C"  # Low quality evidence
+    GRADE_D = "D"  # Very low quality evidence
+    GRADE_I = "I"  # Insufficient evidence
+    GOOD_PRACTICE = "GPP"  # Good Practice Point
+    EXPERT_OPINION = "EO"  # Expert Opinion
+    NOT_GRADED = "NG"  # Not Graded
 
 
 class SecDocumentMetadata(BaseModel):
@@ -151,6 +165,26 @@ class SecDocumentMetadata(BaseModel):
     period_of_report_date: Optional[datetime]
     filed_as_of_date: Optional[datetime]
     date_as_of_change: Optional[datetime]
+
+
+class ClinicalGuidelineMetadata(BaseMetadataObject):
+    """Metadata for a clinical guideline document"""
+    
+    title: str
+    issuing_organization: str
+    publication_date: Optional[datetime]
+    version: Optional[str]
+    condition: Optional[str]  # Medical condition or disease
+    specialty: Optional[str]  # Medical specialty
+    target_population: Optional[str]
+    evidence_grading_system: Optional[str]
+    recommendation_count: Optional[int]
+    last_update: Optional[datetime]
+    next_review: Optional[datetime]
+    guideline_id: Optional[str]  # Organization's internal ID
+    
+    class Config:
+        orm_mode = True
 
 
 DocumentMetadataMap = Dict[Union[DocumentMetadataKeysEnum, str], Any]
