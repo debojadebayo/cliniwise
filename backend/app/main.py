@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 def check_current_head(alembic_cfg: Config, connectable: Engine) -> bool:
     directory = script.ScriptDirectory.from_config(alembic_cfg)
     with connectable.begin() as connection:
-        context = migration.MigrationContext.configureƒ@(connection)
+        context = migration.MigrationContext.configure(connection)
         return set(context.get_current_heads()) == set(directory.get_heads())
 
 

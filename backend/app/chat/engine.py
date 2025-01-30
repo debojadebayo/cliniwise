@@ -21,11 +21,11 @@ from llama_index.readers.file.docs_reader import PDFReader
 from llama_index.schema import Document as LlamaIndexDocument
 from llama_index.agent import OpenAIAgent
 from llama_index.llms import ChatMessage, OpenAI
-from llama_index.embeddings import (
+from llama_index.embeddings.base import BaseEmbedding
+from llama_index.embeddings.openai import (
     OpenAIEmbedding,
     OpenAIEmbeddingMode,
     OpenAIEmbeddingModelType,
-    HuggingFaceEmbedding,
 )
 from llama_index.llms.base import MessageRole
 from llama_index.callbacks.base import BaseCallbackHandler, CallbackManager
@@ -58,8 +58,7 @@ from app.chat.utils import build_title_for_document
 from app.chat.pg_vector import get_vector_store_singleton
 from app.chat.qa_response_synth import get_custom_response_synth
 from llama_index.retrievers import VectorIndexRetriever
-from llama_index.response_synthesis import get_response_synthesizer
-from llama_index.postprocessors import MetadataReplacementPostProcessor
+from llama_index.response_synthesizers.factory import get_response_synthesizer
 
 
 logger = logging.getLogger(__name__)
@@ -226,7 +225,6 @@ def get_tool_service_context(
     llm = OpenAI(
         model=settings.MODEL_NAME,
         temperature=0.1,
-        max_tokens=settings.MAX_TOKENS,
         api_key=settings.OPENAI_API_KEY,
     )
 
@@ -265,30 +263,58 @@ async def build_doc_id_to_index_map(
         3. Processes document into nodes
         4. Creates vector store index
     """
-    doc_id_to_index = {}
-    for document in documents:
-        # Get document-specific embedding model
-        document_type = document.metadata_map.get("document_type")
-        embedding_model = get_embedding_model(document_type)
+    persist_dir = f"{settings.S3_BUCKET_NAME}"
+    vector_store = await get_vector_store_singleton()
+    
+    try:
+        try:
+            storage_context = get_storage_context(persist_dir, vector_store, fs=fs)
+        except FileNotFoundError:
+            logger.info("Could not find storage context in S3. Creating new storage context.")
+            storage_context = StorageContext.from_defaults(vector_store=vector_store, fs=fs)
+            storage_context.persist(persist_dir=persist_dir, fs=fs)
+            
+        index_ids = [str(doc.id) for doc in documents]
+        indices = load_indices_from_storage(
+            storage_context,
+            index_ids=index_ids,
+            service_context=service_context,
+        )
+        doc_id_to_index = dict(zip(index_ids, indices))
+        logger.debug("Loaded indices from storage.")
         
-        # Create document-specific service context with appropriate embedding model
-        doc_service_context = ServiceContext.from_defaults(
-            llm=service_context.llm,
-            embed_model=embedding_model,
-            callback_manager=service_context.callback_manager,
+    except ValueError:
+        logger.error(
+            "Failed to load indices from storage. Creating new indices. "
+            "If you're running the seed_db script, this is normal and expected."
         )
-
-        nodes = await fetch_and_read_document(document)
-        vector_store = await get_vector_store_singleton()
-        await vector_store.run_setup()
-        storage_context = await get_storage_context(
-            settings.VECTOR_STORE_PERSIST_DIR, vector_store, fs=fs
+        storage_context = StorageContext.from_defaults(
+            persist_dir=persist_dir, vector_store=vector_store, fs=fs
         )
-        doc_id_to_index[str(document.id)] = VectorStoreIndex(
-            nodes=nodes,
-            service_context=doc_service_context,
-            storage_context=storage_context,
-        )
+        
+        doc_id_to_index = {}
+        for document in documents:
+            # Get document-specific embedding model
+            document_type = document.metadata_map.get("document_type")
+            embedding_model = get_embedding_model(document_type)
+            
+            # Create document-specific service context with appropriate embedding model
+            doc_service_context = ServiceContext.from_defaults(
+                llm=service_context.llm,
+                embed_model=embedding_model,
+                callback_manager=service_context.callback_manager,
+            )
+            
+            llama_index_docs = fetch_and_read_document(document)
+            index = VectorStoreIndex(
+                nodes=llama_index_docs,
+                storage_context=storage_context,
+                service_context=doc_service_context,
+            )
+            index.set_index_id(str(document.id))
+            index.storage_context.persist(persist_dir=persist_dir, fs=fs)
+            doc_id_to_index[str(document.id)] = index
+            
     return doc_id_to_index
 
 
@@ -354,12 +380,7 @@ def index_to_query_engine(doc_id: str, index: VectorStoreIndex, documents: List[
         
         return RetrieverQueryEngine(
             retriever=retriever,
-            response_synthesizer=response_synthesizer,
-            node_postprocessors=[
-                MetadataReplacementPostProcessor(
-                    target_metadata_key="clinical_guideline"
-                )
-            ]
+            response_synthesizer=response_synthesizer
         )
     
     # For SEC documents, use the existing custom synthesizer with SEC system message

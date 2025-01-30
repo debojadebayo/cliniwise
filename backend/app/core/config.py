@@ -86,6 +86,7 @@ class Settings(PreviewPrefixedSettings):
     # e.g: '["http://localhost", "http://localhost:4200", "http://localhost:3000", \
     # "http://localhost:8080", "http://local.dockertoolbox.tiangolo.com"]'
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
+    MODEL_NAME: str = "gpt-4o"  # Default to GPT-4o
 
     @property
     def VERBOSE(self) -> bool:
@@ -100,7 +101,10 @@ class Settings(PreviewPrefixedSettings):
         Used for setting S3 endpoint URL in the s3fs module.
         When running locally, this should be set to the localstack endpoint.
         """
-        return None if self.RENDER else "http://localhost:4566"
+        if not self.RENDER:
+            return "http://localhost:4566"
+        return None
+
 
     @validator("BACKEND_CORS_ORIGINS", pre=True)
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
@@ -166,9 +170,16 @@ class Settings(PreviewPrefixedSettings):
         # TODO: before full release, set this to 0.1 for production
         return 0.07 if self.ENVIRONMENT == AppEnvironment.PRODUCTION else 1.0
 
-    class Config(AppConfig):
-        env_prefix = ""
+    @property 
+    def CDN_BASE_URL(self) -> str:
+        """
+        Base URL for accessing S3 assets.
+        Uses LocalStack endpoint in local development, AWS S3 in production/preview.
+        """
+        if not self.RENDER:
+            return f"http://{self.S3_ASSET_BUCKET_NAME}.s3-website.localhost.localstack.cloud:4566"
+        return f"https://{self.S3_ASSET_BUCKET_NAME}.s3.amazonaws.com"
 
-
+    
 settings = Settings()
 os.environ["OPENAI_API_KEY"] = settings.OPENAI_API_KEY
