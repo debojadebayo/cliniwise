@@ -22,7 +22,14 @@ async def upsert_single_document(doc_dir: str, guideline_file: Path, metadata: d
     """
     # Construct the document path
     doc_path = guideline_file.relative_to(doc_dir)
-    url_path = f"{url_base.rstrip('/')}/clinical-guidelines/{doc_path}"
+    
+    # Handle URL construction based on environment
+    if url_base.startswith("http://localhost:4566"):
+        # For local development with direct S3 endpoint
+        url_path = f"{url_base}/clinical-guidelines/{doc_path}"
+    else:
+        # For production S3 or other environments
+        url_path = f"{url_base.rstrip('/')}/clinical-guidelines/{doc_path}"
     
     # Create guideline metadata
     guideline_metadata = ClinicalGuidelineMetadata(

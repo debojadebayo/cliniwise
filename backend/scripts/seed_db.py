@@ -168,6 +168,5 @@ Done! 🏁
 def seed_db(include_clinical: bool = True):
     asyncio.run(async_seed_db(include_clinical=include_clinical))
 
-
 if __name__ == "__main__":
     Fire(seed_db)

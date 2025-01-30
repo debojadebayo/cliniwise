@@ -177,7 +177,7 @@ class Settings(PreviewPrefixedSettings):
         Uses LocalStack endpoint in local development, AWS S3 in production/preview.
         """
         if not self.RENDER:
-            return f"http://{self.S3_ASSET_BUCKET_NAME}.s3-website.localhost.localstack.cloud:4566"
+            return f"http://localhost:4566/{self.S3_ASSET_BUCKET_NAME}"
         return f"https://{self.S3_ASSET_BUCKET_NAME}.s3.amazonaws.com"
 
     
