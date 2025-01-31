@@ -53,7 +53,7 @@ class PreviewPrefixedSettings(BaseSettings):
     OPENAI_API_KEY: str
     AWS_KEY: str
     AWS_SECRET: str
-    POLYGON_IO_API_KEY: str
+    # POLYGON_IO_API_KEY: str
 
     class Config(AppConfig):
         env_prefix = "PREVIEW_" if is_pull_request or is_preview_env else ""
@@ -86,7 +86,7 @@ class Settings(PreviewPrefixedSettings):
     # e.g: '["http://localhost", "http://localhost:4200", "http://localhost:3000", \
     # "http://localhost:8080", "http://local.dockertoolbox.tiangolo.com"]'
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
-    MODEL_NAME: str = "gpt-4o"  # Default to GPT-4o
+    MODEL_NAME: str = "gpt-4"  # Default to GPT-4
 
     @property
     def VERBOSE(self) -> bool:

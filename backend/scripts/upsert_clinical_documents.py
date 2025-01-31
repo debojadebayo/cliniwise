@@ -12,6 +12,7 @@ from app.schema import (
 )
 from app.db.session import SessionLocal
 from app.api import crud
+from app.core.config import settings
 
 DEFAULT_URL_BASE = "http://localhost:4566"  # LocalStack endpoint
 DEFAULT_DOC_DIR = "clinical_guidelines/"
@@ -26,10 +27,10 @@ async def upsert_single_document(doc_dir: str, guideline_file: Path, metadata: d
     # Handle URL construction based on environment
     if url_base.startswith("http://localhost:4566"):
         # For local development with direct S3 endpoint
-        url_path = f"{url_base}/clinical-guidelines/{doc_path}"
+        url_path = f"{url_base}/{settings.S3_ASSET_BUCKET_NAME}/{doc_path}"
     else:
         # For production S3 or other environments
-        url_path = f"{url_base.rstrip('/')}/clinical-guidelines/{doc_path}"
+        url_path = f"{url_base.rstrip('/')}/{doc_path}"
     
     # Create guideline metadata
     guideline_metadata = ClinicalGuidelineMetadata(

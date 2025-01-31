@@ -46,3 +46,14 @@ async def get_document(
         raise HTTPException(status_code=404, detail="Document not found")
 
     return docs[0]
+
+
+@router.post("/")
+async def create_document(
+    document: schema.Document,
+    db: AsyncSession = Depends(get_db),
+) -> schema.Document:
+    """
+    Create a new document
+    """
+    return await crud.upsert_document_by_url(db, document)
