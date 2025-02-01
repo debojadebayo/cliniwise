@@ -1,24 +1,27 @@
-export enum BackendDocumentType {
-  TenK = "10-K",
-  TenQ = "10-Q",
-}
-
 export interface BackendDocument {
+  id: string; // UUID from database
   created_at: string;
-  id: string;
   updated_at: string;
-  metadata_map: BackendMetadataMap;
   url: string;
+  metadata_map: BackendMetadataMap;
 }
 
 export interface BackendMetadataMap {
-  sec_document: BackendSecDocument;
+  clinical_guideline?: ClinicalGuideline;
 }
 
-export interface BackendSecDocument {
-  company_name: string;
-  company_ticker: string;
-  doc_type: BackendDocumentType;
-  year: number;
-  quarter: number;
+// Matches backend schema.py ClinicalGuidelineMetadata
+export interface ClinicalGuideline {
+  title: string;
+  issuing_organization: string;
+  publication_date?: string; // datetime from backend
+  version?: string;
+  condition?: string;
+  specialty?: string;
+  target_population?: string;
+  evidence_grading_system?: string;
+  recommendation_count?: number; // integer
+  last_update?: string; // datetime
+  next_review?: string; // datetime
+  guideline_id?: string; // Optional external ID
 }

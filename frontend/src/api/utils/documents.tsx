@@ -1,39 +1,43 @@
-import { MAX_NUMBER_OF_SELECTED_DOCUMENTS } from "~/hooks/useDocumentSelector";
-import { BackendDocument, BackendDocumentType } from "~/types/backend/document";
-import { SecDocument, DocumentType } from "~/types/document";
-import { documentColors } from "~/utils/colors";
-import _ from "lodash";
+import type {
+  BackendDocument,
+  BackendMetadataMap,
+} from "~/types/backend/document";
+import type { ClinicalDocument } from "~/types/document";
+import { DocumentType } from "~/types/document";
 
 export const fromBackendDocumentToFrontend = (
   backendDocuments: BackendDocument[]
-) => {
-  // sort by created_at so that de-dupe filter later keeps oldest duplicate docs
-  backendDocuments = _.sortBy(backendDocuments, 'created_at');
-  let frontendDocs: SecDocument[] = backendDocuments
-  .filter((backendDoc) => 'sec_document' in backendDoc.metadata_map)
-  .map((backendDoc, index) => {
-    const backendDocType = backendDoc.metadata_map.sec_document.doc_type;
-    const frontendDocType =
-      backendDocType === BackendDocumentType.TenK
-        ? DocumentType.TenK
-        : DocumentType.TenQ;
-
-    // we have 10 colors for 10 documents
-    const colorIndex = index < 10 ? index : 0;
-    return {
-      id: backendDoc.id,
-      url: backendDoc.url,
-      ticker: backendDoc.metadata_map.sec_document.company_ticker,
-      fullName: backendDoc.metadata_map.sec_document.company_name,
-      year: String(backendDoc.metadata_map.sec_document.year),
-      docType: frontendDocType,
-      color: documentColors[colorIndex],
-      quarter: backendDoc.metadata_map.sec_document.quarter || "",
-    } as SecDocument;
-  });
-  // de-dupe hotfix
-  const getDocDeDupeKey = (doc: SecDocument) => `${doc.ticker}-${doc.year}-${doc.quarter || ''}`;
-  frontendDocs = _.chain(frontendDocs).sortBy(getDocDeDupeKey).sortedUniqBy(getDocDeDupeKey).value();
-
-  return frontendDocs;
+): ClinicalDocument[] => {
+  return backendDocuments
+    .filter(
+      (
+        doc
+      ): doc is BackendDocument & {
+        metadata_map: {
+          clinical_guideline: NonNullable<
+            BackendMetadataMap["clinical_guideline"]
+          >;
+        };
+      } => !!doc.metadata_map?.clinical_guideline
+    )
+    .map((doc) => {
+      const metadata = doc.metadata_map.clinical_guideline;
+      return {
+        id: doc.id, // Database UUID
+        title: metadata.title,
+        issuingOrganization: metadata.issuing_organization,
+        publicationDate: metadata.publication_date,
+        version: metadata.version,
+        condition: metadata.condition,
+        specialty: metadata.specialty,
+        targetPopulation: metadata.target_population,
+        evidenceGradingSystem: metadata.evidence_grading_system,
+        recommendationCount: metadata.recommendation_count,
+        lastUpdate: metadata.last_update,
+        nextReview: metadata.next_review,
+        guidelineId: metadata.guideline_id, // External ID if available
+        documentType: DocumentType.CLINICAL_GUIDELINE,
+        url: doc.url, // URL for PDF viewer
+      };
+    });
 };

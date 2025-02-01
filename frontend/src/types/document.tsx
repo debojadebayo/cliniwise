@@ -1,20 +1,46 @@
-import { DocumentColorEnum } from "~/utils/colors";
+import { SelectOption } from "./selection";
 
 export enum DocumentType {
-  TenK = "Form 10K",
-  TenQ = "Form 10Q",
+  CLINICAL_GUIDELINE = "clinical_guideline",
 }
 
-export type Ticker = {
-  ticker: string;
-  fullName: string;
-};
-
-export interface SecDocument extends Ticker {
+// main document type
+export interface ClinicalDocument {
   id: string;
+  title: string;
+  issuingOrganization: string;
+  publicationDate?: string;
+  version?: string;
+  condition?: string;
+  specialty?: string;
+  evidenceGradingSystem?: string;
+  recommendationCount?: number;
+  lastUpdate?: string;
+  nextReview?: string;
+  guidelineId?: string;
+  documentType: DocumentType;
   url: string;
-  year: string;
-  docType: DocumentType;
-  quarter?: string;
-  color: DocumentColorEnum;
 }
+
+// dropdown type- minimal types needed for dropdown
+export interface GuidelineOption extends SelectOption {
+  document: ClinicalDocument;
+}
+
+export const createGuidelineOption = (
+  doc: ClinicalDocument
+): GuidelineOption => ({
+  value: doc.id,
+  label: `${doc.title} - ${doc.issuingOrganization}`,
+  document: doc,
+});
+
+export const getAllGuidelines = (
+  documents: ClinicalDocument[]
+): GuidelineOption[] => {
+  const guidelines = documents
+    .filter((doc) => doc.documentType === DocumentType.CLINICAL_GUIDELINE)
+    .map(createGuidelineOption);
+
+  return Array.from(new Set(guidelines));
+};
