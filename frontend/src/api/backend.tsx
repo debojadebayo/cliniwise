@@ -1,7 +1,7 @@
 import { backendUrl } from "~/config";
 import type { Message } from "~/types/conversation";
 import type { BackendDocument } from "~/types/backend/document";
-import { ClinicalDocument } from "~/types/document";
+import type { ClinicalDocument } from "~/types/document";
 import { fromBackendDocumentToFrontend } from "./utils/documents";
 
 interface CreateConversationPayload {
@@ -46,7 +46,7 @@ class BackendClient {
 
   public async createConversation(documentIds: string[]): Promise<string> {
     const endpoint = "api/conversation/";
-    const payload = { documentIds: documentIds };
+    const payload = { document_ids: documentIds };
     const res = await this.post(endpoint, payload);
     const data = (await res.json()) as CreateConversationPayload;
 

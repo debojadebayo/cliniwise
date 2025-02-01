@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo } from "react";
-import { useRouter } from "next/router";
 import type { ClinicalDocument, GuidelineOption } from "~/types/document";
 import { DocumentType, getAllGuidelines } from "~/types/document";
 import { backendClient } from "~/api/backend";

@@ -33,16 +33,22 @@ export const TitleAndDropdown = () => {
   const handleSubmit = (event: { preventDefault: () => void }) => {
     setIsLoadingConversation(true);
     event.preventDefault();
-    const selectedGuidelineIds = selectedGuideline?.document?.id ? [selectedGuideline.document.id] : [];
 
-    if (selectedGuidelineIds.length === 0) {
+    if (!selectedGuideline || !selectedGuideline.document) {
       setIsLoadingConversation(false);
       console.error("No guideline selected");
       return;
     }
 
+    const documentId = selectedGuideline.document.id;
+    if (!documentId) {
+      setIsLoadingConversation(false);
+      console.error("Selected guideline has no document ID");
+      return;
+    }
+
     backendClient
-      .createConversation(selectedGuidelineIds)
+      .createConversation([documentId])
       .then((newConversationId) => {
         setIsLoadingConversation(false);
         router.push(`/conversation/${newConversationId}`).catch((error) => {

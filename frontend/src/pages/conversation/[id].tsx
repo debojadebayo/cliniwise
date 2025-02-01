@@ -3,14 +3,15 @@ import { useRouter } from "next/router";
 import { PdfFocusProvider } from "~/context/pdf";
 
 import type { ChangeEvent } from "react";
-import DisplayMultiplePdfs from "~/components/pdf-viewer/DisplayMultiplePdfs";
+import { ViewPdf } from "~/components/pdf-viewer/ViewPdf";
 import { backendUrl } from "src/config";
-import { MESSAGE_STATUS, Message } from "~/types/conversation";
+import { MESSAGE_STATUS } from "~/types/conversation";
+import type { Message } from "~/types/conversation";
 import useMessages from "~/hooks/useMessages";
 import { backendClient } from "~/api/backend";
 import { RenderConversations as RenderConversations } from "~/components/conversations/RenderConversations";
 import { BiArrowBack } from "react-icons/bi";
-import { ClinicalDocument } from "~/types/document";
+import type { ClinicalDocument } from "~/types/document";
 import { FiShare } from "react-icons/fi";
 import ShareLinkModal from "~/components/modals/ShareLinkModal";
 import { BsArrowUpCircle } from "react-icons/bs";
@@ -21,11 +22,6 @@ import useIsMobile from "~/hooks/utils/useIsMobile";
 export default function Conversation() {
   const router = useRouter();
   const { id } = router.query;
-
-  const { shutdown } = useIntercom();
-  useEffect(() => {
-    shutdown();
-  }, []);
 
   const { isOpen: isShareModalOpen, toggleModal: toggleShareModal } =
     useModal();
@@ -211,7 +207,9 @@ export default function Conversation() {
           </div>
         </div>
         <div className="h-[100vh] w-max">
-          <DisplayMultiplePdfs pdfs={selectedDocuments} />
+          {selectedDocuments.length > 0 && (
+            <ViewPdf file={selectedDocuments[0]} />
+          )}
         </div>
         <ShareLinkModal
           isOpen={isShareModalOpen}

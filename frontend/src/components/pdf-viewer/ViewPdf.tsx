@@ -3,10 +3,10 @@ import usePDFViewer from "~/hooks/usePdfViewer";
 import { PDFOptionsBar } from "./PdfOptionsBar";
 import React from "react";
 import MemoizedVirtualizedPDF from "./VirtualizedPdf";
-import { SecDocument } from "~/types/document";
+import type { ClinicalDocument } from "~/types/document";
 
 interface ViewPdfProps {
-  file: SecDocument;
+  file: ClinicalDocument;
 }
 
 export const ViewPdf: React.FC<ViewPdfProps> = ({ file }) => {
