@@ -18,18 +18,17 @@ import {
   VERTICAL_GUTTER_SIZE_PX,
 } from "~/components/pdf-viewer/pdfDisplayConstants";
 
-import { SecDocument as PdfDocument } from "~/types/document";
+import type { ClinicalDocument as PdfDocument } from "~/types/document";
 
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import { usePdfFocus } from "~/context/pdf";
 import { multiHighlight } from "~/utils/multi-line-highlight";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+
 const pdfjsOptions = pdfjs.GlobalWorkerOptions;
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 const pdfjsVersion = pdfjs.version;
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+
 pdfjsOptions.workerSrc =
   "//unpkg.com/pdfjs-dist@" +
   String(pdfjsVersion) +
@@ -59,6 +58,7 @@ const PageRenderer: React.FC<PageRenderer> = ({
   listWidth,
   setPageInView,
 }) => {
+  console.log("VirtualizedPDF rendering with URL:", file.url);
   const { pdfFocusState } = usePdfFocus();
   const [shouldCenter, setShouldCenter] = useState(false);
   const [isHighlighted, setIsHighlighted] = useState(false);

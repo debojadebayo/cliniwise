@@ -5,9 +5,6 @@ from pathlib import Path
 from fire import Fire
 import s3fs
 from app.core.config import settings, AppEnvironment
-import upsert_db_sec_documents
-import download_sec_pdf
-from download_sec_pdf import DEFAULT_CIKS, DEFAULT_FILING_TYPES
 import seed_storage_context
 import upsert_clinical_documents 
 
@@ -32,9 +29,13 @@ def copy_to_s3(dir_path: str, s3_bucket: str = settings.S3_ASSET_BUCKET_NAME):
         print("Current contents:")
         print(s3.ls(s3_bucket))
 
-    print(f"Copying files from {dir_path} to s3://{s3_bucket}")
-    s3.put(dir_path, s3_bucket, recursive=True)
-    
+    # Copy files individually to avoid directory structure issues
+    dir_path = Path(dir_path)
+    for file_path in dir_path.glob("*.pdf"):
+        s3_path = f"{s3_bucket}/{file_path.name}"
+        print(f"Copying {file_path} to s3://{s3_path}")
+        s3.put(str(file_path), s3_path)
+
     print("Files in bucket after upload:")
     print(s3.ls(s3_bucket))
 
@@ -47,13 +48,13 @@ async def async_seed_db(include_clinical: bool = True):
                 
                 # Map filenames to metadata
                 guideline_metadata = {
-                    "Euro J of Neurology - 2021 - Quinn - European Stroke Organisation and European Academy of Neurology joint guidelines on.pdf": {
+                    "Euro_Journal_Neurology_Stroke_Guidelines.pdf": {
                         "title": "ESO-EAN Joint Guidelines on Post-Stroke Management",
                         "issuing_organization": "European Stroke Organisation and European Academy of Neurology",
                         "specialty": "Neurology",
                         "evidence_grading_system": "GRADE"
                     },
-                    "NCPG - Antenatal Corticosteroids to Reduce Neonatal Morbidity and Mortality.pdf": {
+                    "NCPG_steroids.pdf": {
                         "title": "Antenatal Corticosteroids Guidelines",
                         "issuing_organization": "NCPG",
                         "specialty": "Obstetrics",
@@ -78,33 +79,24 @@ async def async_seed_db(include_clinical: bool = True):
                         "evidence_grading_system": "GRADE"
                     }
                 }
-                
+
                 # Create metadata list from existing files
                 metadata_list = []
-                for guideline_file in example_guidelines_dir.glob("*.pdf"):
-                    if guideline_file.name in guideline_metadata:
-                        metadata_list.append(guideline_metadata[guideline_file.name])
-                
-                print(f"Found {len(metadata_list)} example guidelines")
-                
-                # Copy example guidelines to temp directory to maintain same structure
-                temp_guidelines_dir = Path(temp_dir) / "clinical-guidelines"
-                temp_guidelines_dir.mkdir(exist_ok=True)
-                for guideline_file in example_guidelines_dir.glob("*.pdf"):
-                    if guideline_file.name != ".DS_Store":  # Skip macOS system files
-                        import shutil
-                        shutil.copy2(guideline_file, temp_guidelines_dir / guideline_file.name)
-                
-                print("Copying example clinical guidelines to LocalStack S3")
-                copy_to_s3(str(temp_guidelines_dir), f"{settings.S3_ASSET_BUCKET_NAME}/clinical-guidelines")
-                
-                print("Upserting clinical guidelines into database")
+                for file_path in example_guidelines_dir.glob("*.pdf"):
+                    if file_path.name in guideline_metadata:
+                        metadata = guideline_metadata[file_path.name]
+                        metadata_list.append(metadata)
+
+                print("Copying clinical guidelines to S3")
+                copy_to_s3(str(example_guidelines_dir))
+
+                print("Upserting records of clinical guidelines into database")
                 await upsert_clinical_documents.async_upsert_documents_from_guidelines(
                     url_base=settings.CDN_BASE_URL,
-                    doc_dir=str(temp_guidelines_dir),
+                    doc_dir=str(example_guidelines_dir),
                     metadata_list=metadata_list
                 )
-                
+
                 print("Seeding storage context with clinical guidelines")
                 await seed_storage_context.async_main_seed_storage_context()
                 

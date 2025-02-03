@@ -7,12 +7,25 @@ from sqlalchemy import select, delete
 from sqlalchemy.dialects.postgresql import insert
 
 
+"""
+Database CRUD operations for conversations, messages, and documents.
+Uses SQLAlchemy for async database interactions.
+"""
+
+
 async def fetch_conversation_with_messages(
     db: AsyncSession, conversation_id: str
 ) -> Optional[schema.Conversation]:
     """
-    Fetch a conversation with its messages + messagesubprocesses
-    return None if the conversation with the given id does not exist
+    Retrieve a conversation with all its messages and subprocesses.
+    
+    Process:
+        1. Builds query with eager loading for:
+           - Messages and their subprocesses
+           - Associated documents
+        2. Executes query and gets first result
+        3. Formats response with document list
+        4. Returns None if conversation not found
     """
     # Eagerly load required relationships
     stmt = (
@@ -42,6 +55,16 @@ async def fetch_conversation_with_messages(
 async def create_conversation(
     db: AsyncSession, convo_payload: schema.ConversationCreate
 ) -> schema.Conversation:
+    """
+    Create a new conversation with document associations.
+    
+    Process:
+        1. Creates new conversation record
+        2. Creates ConversationDocument links for each document
+        3. Adds all records to database
+        4. Commits transaction
+        5. Returns created conversation
+    """
     conversation = Conversation()
     convo_doc_db_objects = [
         ConversationDocument(document_id=doc_id, conversation=conversation)
@@ -55,6 +78,14 @@ async def create_conversation(
 
 
 async def delete_conversation(db: AsyncSession, conversation_id: str) -> bool:
+    """
+    Delete a conversation and all associated records.
+    
+    Process:
+        1. Builds delete statement for conversation
+        2. Executes delete (cascades to related records)
+        3. Commits transaction
+    """
     stmt = delete(Conversation).where(Conversation.id == conversation_id)
     result = await db.execute(stmt)
     await db.commit()
@@ -65,8 +96,13 @@ async def fetch_message_with_sub_processes(
     db: AsyncSession, message_id: str
 ) -> Optional[schema.Message]:
     """
-    Fetch a message with its sub processes
-    return None if the message with the given id does not exist
+    Retrieve a message with all its subprocess records.
+    
+    Process:
+        1. Builds query with eager loading for:
+           - Message subprocesses
+        2. Executes query and gets first result
+        3. Returns None if message not found
     """
     # Eagerly load required relationships
     stmt = (
@@ -87,11 +123,19 @@ async def fetch_documents(
     ids: Optional[List[str]] = None,
     url: Optional[str] = None,
     limit: Optional[int] = None,
-) -> Optional[Sequence[schema.Document]]:
+) -> List[schema.Document]:
     """
-    Fetch a document by its url or id
+    Flexible document retrieval with multiple filter options.
+    
+    Process:
+        1. Builds base query for documents
+        2. Applies filters if provided:
+           - Single ID lookup
+           - Multiple IDs lookup
+           - URL lookup
+        3. Applies optional result limit
+        4. Executes query and returns results
     """
-
     stmt = select(Document)
     if id is not None:
         stmt = stmt.where(Document.id == id)
@@ -111,7 +155,20 @@ async def upsert_document_by_url(
     db: AsyncSession, document: schema.Document
 ) -> schema.Document:
     """
-    Upsert a document
+    Create or update a document based on its URL.
+    
+    Process:
+        1. Builds upsert statement with:
+           - All document fields for insert
+           - Metadata update on conflict
+        2. Uses URL as unique constraint
+        3. Returns inserted/updated document
+        4. Commits transaction
+        
+    Note:
+        This only handles database operations.
+        Document processing and embedding happens lazily
+        when document is first used in conversation.
     """
     stmt = insert(Document).values(**document.dict(exclude_none=True))
     stmt = stmt.on_conflict_do_update(

@@ -73,15 +73,14 @@ OPENAI_CHAT_LLM_NAME = "gpt-3.5-turbo-0613"
 
 def get_s3_fs() -> AsyncFileSystem:
     """
-Creates and returns an S3 filesystem interface.
-
-Returns:
-    AsyncFileSystem: An S3 filesystem object for S3/LocalStack interaction.
+    Creates and configures an S3 filesystem interface.
     
-Side Effects:
-    - Creates the S3 bucket if it doesn't exist
-    - Uses LocalStack endpoint in development, real S3 in production
-"""
+    Process:
+        1. Determines if using LocalStack (development) or real S3 (production)
+        2. Creates filesystem with appropriate endpoint and credentials
+        3. Ensures target bucket exists
+        4. Returns configured filesystem interface
+    """
     s3 = s3fs.S3FileSystem(
         key=settings.AWS_KEY,
         secret=settings.AWS_SECRET,
@@ -96,20 +95,19 @@ def fetch_and_read_document(
     document: DocumentSchema,
 ) -> List[LlamaIndexDocument]:
     """
-Downloads and processes a document from its URL.
-
-Args:
-    document (DocumentSchema): Document metadata including URL and type
-
-Returns:
-    List[LlamaIndexDocument]: Processed document nodes ready for indexing
+    Downloads and processes a document from its URL into indexable chunks.
     
-Process:
-    1. Downloads document to temporary directory
-    2. Determines document type from metadata
-    3. Uses appropriate processor (GuidelineProcessor/PDFReader)
-    4. Processes document into nodes with metadata
-"""
+    Process:
+        1. Downloads document to temporary directory
+        2. Determines document type from metadata
+        3. For clinical guidelines:
+           - Uses GuidelineProcessor with specialized chunking
+           - Adds clinical metadata to each chunk
+        4. For other documents:
+           - Uses standard PDFReader
+           - Adds basic document metadata
+        5. Returns list of processed document chunks
+    """
     with TemporaryDirectory() as temp_dir:
         temp_file_path = Path(temp_dir) / f"{str(document.id)}.pdf"
         # Download the file
@@ -143,9 +141,21 @@ Process:
 
 
 def build_description_for_document(document: DocumentSchema) -> str:
-    """Build a description for a document to be used in the tool metadata."""
+    """
+    Creates a human-readable description of a document for the chat interface.
+    
+    Process:
+        1. Identifies document type from metadata
+        2. For SEC documents:
+           - Extracts filing period and company info
+           - Formats as financial document description
+        3. For clinical guidelines:
+           - Extracts title and issuing organization
+           - Formats as medical guideline description
+        4. Falls back to basic description if metadata missing
+    """
     if DocumentMetadataKeysEnum.SEC_DOCUMENT in document.metadata_map:
-        sec_metadata = SecDocumentMetadata.parse_obj(
+        sec_metadata = SecDocumentMetadata.model_validate(
             document.metadata_map[DocumentMetadataKeysEnum.SEC_DOCUMENT]
         )
         time_period = (
@@ -157,7 +167,7 @@ def build_description_for_document(document: DocumentSchema) -> str:
     
     elif DocumentMetadataKeysEnum.CLINICAL_GUIDELINE in document.metadata_map:
         try:
-            guideline = ClinicalGuidelineMetadata.parse_obj(
+            guideline = ClinicalGuidelineMetadata.model_validate(
                 document.metadata_map[DocumentMetadataKeysEnum.CLINICAL_GUIDELINE]
             )
             description = f"A clinical guideline titled '{guideline.title}' published by {guideline.issuing_organization}"
@@ -177,10 +187,13 @@ def get_chat_history(
     chat_messages: List[MessageSchema],
 ) -> List[ChatMessage]:
     """
-    Given a list of chat messages, return a list of ChatMessage instances.
-
-    Failed chat messages are filtered out and then the remaining ones are
-    sorted by created_at.
+    Prepares chat history for the LLM conversation.
+    
+    Process:
+        1. Filters out failed messages
+        2. Sorts messages by creation time
+        3. Converts to LlamaIndex ChatMessage format
+        4. Preserves user/assistant roles
     """
     # pre-process chat messages
     chat_messages = [
@@ -203,7 +216,17 @@ def get_chat_history(
 
 
 def get_embedding_model(document_type: str = None) -> BaseEmbedding:
-    """Get the appropriate embedding model based on document type."""
+    """
+    Selects appropriate embedding model based on document type.
+    
+    Process:
+        1. Determines document category (clinical/financial)
+        2. Configures embedding parameters:
+           - Model type (text-embedding-ada-002)
+           - Mode (text-search for documents)
+           - Dimensions and other settings
+        3. Returns configured embedding model
+    """
     if document_type == "clinical_guideline":
         # Use text-embedding-3-large for clinical documents
         # It has better performance on domain-specific tasks than ada-002
@@ -222,6 +245,15 @@ def get_embedding_model(document_type: str = None) -> BaseEmbedding:
 def get_tool_service_context(
     callback_handlers: List[BaseCallbackHandler],
 ) -> ServiceContext:
+    """
+    Creates service context for document processing tools.
+    
+    Process:
+        1. Configures LLM settings (temperature, model)
+        2. Sets up callback manager for processing events
+        3. Creates embedding model
+        4. Returns context with all configurations
+    """
     llm = OpenAI(
         model=settings.MODEL_NAME,
         temperature=0.1,
@@ -247,21 +279,15 @@ async def build_doc_id_to_index_map(
 ) -> Dict[str, VectorStoreIndex]:
     """
     Creates vector store indices for a list of documents.
-
-    Args:
-        service_context (ServiceContext): Context with LLM and callbacks
-        documents (List[DocumentSchema]): Documents to index
-        fs (Optional[AsyncFileSystem]): Optional filesystem
-        
-    Returns:
-        Dict[str, VectorStoreIndex]: Mapping of document IDs to vector indices
-        
+    
     Process:
-        For each document:
-        1. Gets appropriate embedding model
-        2. Creates document-specific service context
-        3. Processes document into nodes
-        4. Creates vector store index
+        1. For each document:
+           - Gets appropriate embedding model
+           - Creates document-specific service context
+           - Downloads and processes document into nodes
+           - Creates vector store index
+        2. Caches indices for performance
+        3. Returns mapping of document IDs to indices
     """
     persist_dir = f"{settings.S3_BUCKET_NAME}"
     vector_store = await get_vector_store_singleton()
@@ -318,7 +344,22 @@ async def build_doc_id_to_index_map(
     return doc_id_to_index
 
 
-def index_to_query_engine(doc_id: str, index: VectorStoreIndex, documents: List[DocumentSchema]) -> BaseQueryEngine:
+def index_to_query_engine(
+    doc_id: str, 
+    index: VectorStoreIndex,
+    documents: List[DocumentSchema]
+) -> BaseQueryEngine:
+    """
+    Creates specialized query engine for a document.
+    
+    Process:
+        1. Identifies document type and metadata
+        2. Configures retriever with:
+           - Document-specific filters
+           - Similarity search parameters
+        3. Sets up response synthesizer
+        4. Returns optimized query engine
+    """
     # Basic filters to ensure we only get nodes from this document
     base_filters = MetadataFilters(
         filters=[ExactMatchFilter(key=DB_DOC_ID_KEY, value=doc_id)]
@@ -326,14 +367,6 @@ def index_to_query_engine(doc_id: str, index: VectorStoreIndex, documents: List[
     
     """
     Creates a specialized query engine for a document based on its type.
-
-    Args:
-        doc_id (str): ID of the document to create query engine for
-        index (VectorStoreIndex): Vector store index containing document nodes
-        documents (List[DocumentSchema]): List of all documents for metadata lookup
-
-    Returns:
-        BaseQueryEngine: Configured query engine optimized for the document type
         
     Features:
         - Applies document-specific filters to ensure relevant nodes
@@ -402,14 +435,21 @@ def index_to_query_engine(doc_id: str, index: VectorStoreIndex, documents: List[
     key=lambda *args, **kwargs: "global_storage_context",
 )
 def get_storage_context(
-    persist_dir: str, vector_store: VectorStore, fs: Optional[AsyncFileSystem] = None
+    persist_dir: str,
+    vector_store: VectorStore,
+    fs: Optional[AsyncFileSystem] = None
 ) -> StorageContext:
     """
-    Creates or retrieves a cached storage context for vector storage.
-    Note:
-        - Cached for 300 seconds (5 minutes) to improve performance
-        - Cache key combines persist_dir and vector_store identity
-        - Supports optional filesystem for storage operations
+    Creates or retrieves cached storage context.
+    
+    Process:
+        1. Generates cache key from directory and store
+        2. Checks TTL cache for existing context
+        3. If not found:
+           - Creates new storage context
+           - Configures persistence settings
+           - Caches for 5 minutes
+        4. Returns ready-to-use context
     """
     logger.info("Creating new storage context.")
     return StorageContext.from_defaults(
@@ -421,31 +461,19 @@ async def get_chat_engine(
     callback_handler: BaseCallbackHandler,
     conversation: ConversationSchema,
 ) -> OpenAIAgent:
-    
     """
-    Creates a comprehensive chat engine for handling document-based conversations.
-
-    Args:
-        callback_handler (BaseCallbackHandler): Handler for managing chat callbacks
-        conversation (ConversationSchema): Current conversation context and history
-
-    Returns:
-        OpenAIAgent: Fully configured chat agent ready to handle queries
-        
+    Creates comprehensive chat engine for document-based conversations.
+    
     Process:
-        1. Sets up service context with callback handler
-        2. Initializes S3 filesystem for document access
-        3. Creates vector indices for all conversation documents
-        4. Builds query engines for each document
-        5. Configures chat history and message handling
-        6. Sets up system prompts and tools
-        
-    Features:
-        - Handles multiple document types (SEC, Clinical)
-        - Maintains conversation context
-        - Uses document-specific embedding models
-        - Provides specialized tools based on document types
-        - Supports streaming responses
+        1. Sets up service context with callbacks
+        2. Initializes S3 filesystem
+        3. For each conversation document:
+           - Creates vector indices
+           - Builds specialized query engines
+           - Configures document-specific tools
+        4. Sets up chat history and context
+        5. Configures system prompts
+        6. Returns fully configured chat agent
     """
     service_context = get_tool_service_context([callback_handler])
     s3_fs = get_s3_fs()

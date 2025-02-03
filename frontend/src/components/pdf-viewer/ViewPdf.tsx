@@ -10,6 +10,8 @@ interface ViewPdfProps {
 }
 
 export const ViewPdf: React.FC<ViewPdfProps> = ({ file }) => {
+  console.log("ViewPdf rendering with file:", file);
+
   const {
     scrolledIndex,
     setCurrentPageNumber,
@@ -29,8 +31,16 @@ export const ViewPdf: React.FC<ViewPdfProps> = ({ file }) => {
     zoomOutEnabled,
   } = usePDFViewer(file);
 
+  if (!file || !file.url) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p className="text-gray-500">No PDF available</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="relative">
+    <div className="relative flex h-full flex-col">
       {scaleText && (
         <PDFOptionsBar
           file={file}
@@ -48,15 +58,32 @@ export const ViewPdf: React.FC<ViewPdfProps> = ({ file }) => {
         />
       )}
 
-      <MemoizedVirtualizedPDF
-        key={`${file.id}`}
-        ref={pdfFocusRef}
-        file={file}
-        setIndex={setCurrentPageNumber}
-        scale={scale}
-        setScaleFit={setScaleFit}
-        setNumPages={setNumPages}
-      />
+      <div className="flex-1 overflow-hidden">
+        <MemoizedVirtualizedPDF
+          key={`${file.id}-${file.url}`}
+          ref={pdfFocusRef}
+          file={file}
+          setIndex={setCurrentPageNumber}
+          scale={scale}
+          setScaleFit={setScaleFit}
+          setNumPages={setNumPages}
+        />
+      </div>
+
+      {/* Document Info Panel */}
+      <div className="absolute bottom-0 left-0 right-0 border-t bg-white bg-opacity-90 p-4">
+        <h3 className="font-medium text-gray-900">{file.title}</h3>
+        <div className="mt-1 text-sm text-gray-600">
+          <p>Organization: {file.issuingOrganization}</p>
+          <p>
+            Published:{" "}
+            {file.publicationDate
+              ? new Date(file.publicationDate).toLocaleDateString()
+              : "Not available"}
+          </p>
+          {file.version && <p>Version: {file.version}</p>}
+        </div>
+      </div>
     </div>
   );
 };

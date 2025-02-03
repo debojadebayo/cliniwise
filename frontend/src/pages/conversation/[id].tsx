@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { PdfFocusProvider } from "~/context/pdf";
 
@@ -16,7 +16,6 @@ import { FiShare } from "react-icons/fi";
 import ShareLinkModal from "~/components/modals/ShareLinkModal";
 import { BsArrowUpCircle } from "react-icons/bs";
 import { useModal } from "~/hooks/utils/useModal";
-import { useIntercom } from "react-use-intercom";
 import useIsMobile from "~/hooks/utils/useIsMobile";
 
 export default function Conversation() {
@@ -48,20 +47,42 @@ export default function Conversation() {
 
   useEffect(() => {
     const fetchConversation = async (id: string) => {
-      const result = await backendClient.fetchConversation(id);
-      if (result.messages) {
-        setMessages(result.messages);
-      }
-      if (result.documents) {
-        setSelectedDocuments(result.documents);
+      try {
+        const result = await backendClient.fetchConversation(id);
+        if (result.messages) {
+          setMessages(result.messages);
+        }
+        if (result.documents) {
+          setSelectedDocuments(result.documents);
+        }
+      } catch (error) {
+        console.error("Failed to fetch conversation:", error);
+        router.push("/"); // Redirect to home on error
       }
     };
     if (conversationId) {
-      fetchConversation(conversationId).catch(() =>
-        console.error("Conversation Load Error")
+      void fetchConversation(conversationId);
+    }
+  }, [conversationId, setMessages, router]);
+
+  const renderPdfViewer = () => {
+    console.log("selectedDocuments", selectedDocuments);
+    if (!selectedDocuments || selectedDocuments.length === 0) {
+      return (
+        <div className="flex h-full items-center justify-center">
+          <p className="text-gray-500">No documents selected</p>
+        </div>
       );
     }
-  }, [conversationId, setMessages]);
+
+    return (
+      <div className="h-full overflow-hidden">
+        {selectedDocuments.map((doc) => (
+          <ViewPdf key={doc.id} file={doc} />
+        ))}
+      </div>
+    );
+  };
 
   // Keeping this in this file for now because this will be subject to change
   const submit = () => {
@@ -78,9 +99,7 @@ export default function Conversation() {
     const url = messageEndpoint + `?user_message=${encodeURI(userMessage)}`;
 
     const events = new EventSource(url);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument
     events.onmessage = (event: MessageEvent) => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument
       const parsedData: Message = JSON.parse(event.data);
       systemSendMessage(parsedData);
 
@@ -120,12 +139,15 @@ export default function Conversation() {
     };
   }, [submit]);
 
-  const setSuggestedMessage = (text: string) => {
-    setUserMessage(text);
-    if (textFocusRef.current) {
-      textFocusRef.current.focus();
-    }
-  };
+  const setSuggestedMessage = useCallback(
+    (text: string) => {
+      setUserMessage(text);
+      if (textFocusRef.current) {
+        textFocusRef.current.focus();
+      }
+    },
+    [setUserMessage]
+  );
 
   useEffect(() => {
     if (textFocusRef.current) {
@@ -142,11 +164,7 @@ export default function Conversation() {
             Please switch to desktop!
           </div>
           <button
-            onClick={() => {
-              router
-                .push(`/`)
-                .catch(() => console.log("error navigating to conversation"));
-            }}
+            onClick={async () => await router.push("/")}
             className="m-4 rounded border bg-llama-indigo px-8 py-2 font-bold text-white hover:bg-[#3B3775]"
           >
             Back Home
@@ -158,63 +176,77 @@ export default function Conversation() {
 
   return (
     <PdfFocusProvider>
-      <div className="flex h-[100vh] w-full items-center justify-center">
-        <div className="flex h-[100vh] w-[44vw] flex-col items-center border-r-2 bg-white">
-          <div className="flex h-[44px] w-full items-center justify-between border-b-2 ">
-            <div className="flex w-full items-center justify-between">
-              <button
-                onClick={() => {
-                  router
-                    .push("/")
-                    .catch(() => console.error("error navigating home"));
-                }}
-                className="ml-4 flex items-center justify-center rounded px-2 font-light text-[#9EA2B0] hover:text-gray-90"
-              >
-                <BiArrowBack className="mr-1" /> Back to Document Selection
-              </button>
-              <button
-                onClick={toggleShareModal}
-                className="mr-3 flex items-center justify-center rounded-full border border-gray-400 p-1 px-3 text-gray-400 hover:bg-gray-15"
-              >
-                <div className="text-xs font-medium">Share</div>
-                <FiShare className="ml-1" size={12} />
-              </button>
-            </div>
-          </div>
-          <div className="flex max-h-[calc(100vh-114px)] w-[44vw] flex-grow flex-col overflow-scroll ">
+      <div className="flex h-screen flex-col">
+        <div className="flex items-center justify-between border-b p-4">
+          <button
+            onClick={async () => await router.push("/")}
+            className="flex items-center text-gray-600 hover:text-gray-800"
+          >
+            <BiArrowBack className="mr-2" />
+            Back to Documents
+          </button>
+          <button
+            onClick={toggleShareModal}
+            className="flex items-center text-gray-600 hover:text-gray-800"
+          >
+            <FiShare className="mr-2" />
+            Share
+          </button>
+        </div>
+
+        <div className="flex flex-1 overflow-hidden">
+          {/* PDF Viewer Section */}
+          <div className="h-full w-1/2 border-r">{renderPdfViewer()}</div>
+
+          {/* Chat Section */}
+          <div className="flex h-full w-1/2 flex-col">
             <RenderConversations
               messages={messages}
               documents={selectedDocuments}
-              setUserMessage={setSuggestedMessage}
+              setUserMessage={setUserMessage}
             />
-          </div>
-          <div className="relative flex h-[70px] w-[44vw] w-full items-center border-b-2 border-t">
-            <textarea
-              ref={textFocusRef}
-              rows={1}
-              className="box-border w-full flex-grow resize-none overflow-hidden rounded px-5 py-3 pr-10 text-gray-90 placeholder-gray-60 outline-none"
-              placeholder={"Start typing your question..."}
-              value={userMessage}
-              onChange={handleTextChange}
-            />
-            <button
-              disabled={isMessagePending || userMessage.length === 0}
-              onClick={submit}
-              className="z-1 absolute right-6 top-1/2 mb-1 -translate-y-1/2 transform rounded text-gray-90 opacity-80 enabled:hover:opacity-100 disabled:opacity-30"
-            >
-              <BsArrowUpCircle size={24} />
-            </button>
+            <div className="border-t p-4">
+              <textarea
+                ref={textFocusRef}
+                value={userMessage}
+                onChange={handleTextChange}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    submit();
+                  }
+                }}
+                placeholder="Ask a question..."
+                className="w-full resize-none rounded-lg border p-2"
+                rows={1}
+              />
+              <button
+                onClick={submit}
+                disabled={!userMessage || isMessagePending}
+                className="mt-2 rounded-lg bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
+              >
+                {isMessagePending ? (
+                  <span className="flex items-center">
+                    <span className="mr-2 animate-spin">⌛</span>
+                    Processing...
+                  </span>
+                ) : (
+                  <span className="flex items-center">
+                    <BsArrowUpCircle className="mr-2" />
+                    Send
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
-        <div className="h-[100vh] w-max">
-          {selectedDocuments.length > 0 && (
-            <ViewPdf file={selectedDocuments[0]} />
-          )}
-        </div>
-        <ShareLinkModal
-          isOpen={isShareModalOpen}
-          toggleModal={toggleShareModal}
-        />
+
+        {isShareModalOpen && (
+          <ShareLinkModal
+            isOpen={isShareModalOpen}
+            toggleModal={toggleShareModal}
+          />
+        )}
       </div>
     </PdfFocusProvider>
   );

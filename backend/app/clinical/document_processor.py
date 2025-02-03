@@ -1,5 +1,6 @@
 """
 Clinical guideline document processor using LlamaIndex.
+Handles the parsing and chunking of clinical guideline PDFs into indexable nodes.
 """
 from pathlib import Path
 from typing import Dict, List, Optional, Any
@@ -12,9 +13,26 @@ from app.schema import DocumentMetadataKeysEnum, EvidenceGradeEnum
 
 
 class GuidelineProcessor:
-    """Processor for clinical guideline documents."""
+    """
+    Processor for clinical guideline documents.
+    
+    Features:
+        - Specialized PDF processing for clinical guidelines
+        - Smart chunking with sentence-level splitting
+        - Metadata preservation across chunks
+        - Configurable chunk sizes for optimal retrieval
+    """
     
     def __init__(self):
+        """
+        Initialize processor with PDF reader and chunking settings.
+        
+        Process:
+            1. Sets up PDFReader for document loading
+            2. Configures SentenceSplitter with:
+               - 512 token chunk size for precise retrieval
+               - 50 token overlap for context preservation
+        """
         self.reader = PDFReader()
         self.node_parser = SentenceSplitter.from_defaults(
             chunk_size=512,  # Smaller chunks for more precise retrieval
@@ -27,14 +45,16 @@ class GuidelineProcessor:
         metadata: Dict[str, Any]
     ) -> List[LlamaIndexDocument]:
         """
-        Process a clinical guideline document.
+        Process a clinical guideline document into searchable chunks.
         
-        Args:
-            file_path: Path to the PDF file
-            metadata: Document metadata including guideline information
-            
-        Returns:
-            List of LlamaIndex Document objects with appropriate metadata
+        Process:
+            1. Reads PDF into raw document objects
+            2. Extracts clinical guideline metadata
+            3. For each document section:
+               - Adds metadata (title, org, date)
+               - Splits into semantic chunks
+               - Preserves clinical context
+            4. Returns list of processed nodes
         """
         # Read the PDF file
         raw_docs = self.reader.load_data(file_path)
