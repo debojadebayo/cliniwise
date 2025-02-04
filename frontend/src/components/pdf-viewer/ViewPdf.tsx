@@ -12,6 +12,7 @@ interface ViewPdfProps {
 export const ViewPdf: React.FC<ViewPdfProps> = ({ file }) => {
   console.log("ViewPdf rendering with file:", file);
 
+  // Use the S3 URL directly from the file object
   const {
     scrolledIndex,
     setCurrentPageNumber,

@@ -101,19 +101,24 @@ app = FastAPI(
 
 if settings.BACKEND_CORS_ORIGINS:
     origins = settings.BACKEND_CORS_ORIGINS.copy()
+    logger.debug(f"CORS Origins: {origins}")
     if settings.CODESPACES and settings.CODESPACE_NAME and \
         settings.ENVIRONMENT == AppEnvironment.LOCAL:
-        # add codespace origin if running in Github codespace
         origins.append(f"https://{settings.CODESPACE_NAME}-3000.app.github.dev")
-    # allow all origins
+        logger.debug(f"Added codespace origin, new CORS Origins: {origins}")
+    
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
-        allow_origin_regex="https://llama-app-frontend.*\.vercel\.app",
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"],
+        allow_headers=["Content-Type", "Authorization", "Accept", "Origin", 
+                      "X-Requested-With", "Access-Control-Request-Method",
+                      "Access-Control-Request-Headers"],
+        expose_headers=["Content-Length", "Content-Range"],
+        max_age=3600,
     )
+    logger.debug(f"Added CORS middleware with origins: {origins}")
 
 app.include_router(api_router, prefix=settings.API_PREFIX)
 app.mount(f"/{settings.LOADER_IO_VERIFICATION_STR}", loader_io_router)

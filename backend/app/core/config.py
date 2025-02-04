@@ -86,7 +86,7 @@ class Settings(PreviewPrefixedSettings):
     # e.g: '["http://localhost", "http://localhost:4200", "http://localhost:3000", \
     # "http://localhost:8080", "http://local.dockertoolbox.tiangolo.com"]'
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
-    MODEL_NAME: str = "gpt-4"  # Default to GPT-4
+    MODEL_NAME: str = "gpt-4-1106-preview"  # Default to GPT-4
 
     @property
     def VERBOSE(self) -> bool:

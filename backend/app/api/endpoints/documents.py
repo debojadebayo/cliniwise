@@ -43,7 +43,6 @@ async def get_documents(
 
     return docs
 
-
 @router.get("/{document_id}")
 async def get_document(
     document_id: UUID,

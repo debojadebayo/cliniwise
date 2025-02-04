@@ -28,6 +28,7 @@ async def async_main_seed_storage_context():
                 continue
                 
             await build_doc_id_to_index_map(service_context, [doc], fs=fs)
+            print(f"\nSuccessfully processed document {doc.id}")
         except Exception as e:
             print(f"\nError processing document {doc.id}: {str(e)}")
             failed_docs.append(doc.id)

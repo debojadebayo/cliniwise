@@ -66,7 +66,6 @@ export default function Conversation() {
   }, [conversationId, setMessages, router]);
 
   const renderPdfViewer = () => {
-    console.log("selectedDocuments", selectedDocuments);
     if (!selectedDocuments || selectedDocuments.length === 0) {
       return (
         <div className="flex h-full items-center justify-center">
