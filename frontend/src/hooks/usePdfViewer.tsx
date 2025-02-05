@@ -4,7 +4,7 @@ import { usePdfFocus } from "~/context/pdf";
 
 import type { PdfFocusHandler as PdfFocusHandler } from "~/components/pdf-viewer/VirtualizedPdf";
 import React from "react";
-import { SecDocument } from "~/types/document";
+import type { ClinicalDocument } from "~/types/document";
 
 export const zoomLevels = [
   "50%",
@@ -17,7 +17,7 @@ export const zoomLevels = [
 ];
 const startZoomLevelIdx = 2;
 
-const usePDFViewer = (file: SecDocument) => {
+const usePDFViewer = (file: ClinicalDocument) => {
   const [scrolledIndex, setScrolledIndex] = useState(1);
   const [scale, setScale] = useState(1.0);
   const [scaleFit, setScaleFit] = useState(1.0);

@@ -5,7 +5,7 @@ import GitHubButton from "react-github-btn";
 import { FiFilePlus } from "react-icons/fi";
 
 import cx from "classnames";
-import type { SelectOption } from "~/types/selection";
+import type { GuidelineOption } from "~/types/document";
 
 import Select from "react-select";
 import { useDocumentSelector } from "~/hooks/useDocumentSelector";
@@ -64,7 +64,9 @@ export const TitleAndDropdown = () => {
 
   return (
     <div className="landing-page-gradient-1 relative flex h-max w-screen flex-col items-center font-lora ">
-      <div className="absolute right-4 top-4">Built by Debo Adebayo</div>
+      <div className="absolute right-4 top-4 px-4 py-2">
+        Built by Debo Adebayo
+      </div>
       <div className="mt-28 flex flex-col items-center">
         <div className="w-4/5 text-center text-4xl">
           Access up to date clinical information with{" "}
@@ -101,35 +103,15 @@ export const TitleAndDropdown = () => {
             </div>
             <div className="flex-grow">
               <Select
-                openMenuOnFocus
                 value={selectedGuideline}
-                onChange={(newValue) => {
-                  handleGuidelineChange(newValue as SelectOption);
+                onChange={(option) => {
+                  if (option) handleGuidelineChange(option);
                 }}
                 options={availableGuidelines}
-                placeholder="Select a clinical guideline..."
-                components={{
-                  IndicatorSeparator: () => null,
-                  DropdownIndicator: () => null,
-                }}
-                styles={{
-                  ...customReactSelectStyles,
-                  control: (base) => ({
-                    ...base,
-                    border: "none",
-                    boxShadow: "none",
-                    background: "transparent",
-                  }),
-                  input: (base) => ({
-                    ...base,
-                    margin: 0,
-                    padding: 0,
-                  }),
-                  valueContainer: (base) => ({
-                    ...base,
-                    padding: "0 8px",
-                  }),
-                }}
+                className="w-full max-w-[600px]"
+                styles={customReactSelectStyles}
+                placeholder="Search for a clinical guideline..."
+                isLoading={false}
               />
             </div>
           </div>
@@ -138,20 +120,17 @@ export const TitleAndDropdown = () => {
               onClick={handleSubmit}
               disabled={!selectedGuideline || isLoadingConversation}
               className={cx(
-                "flex items-center justify-center rounded-lg px-4 py-2 font-nunito text-white",
-                {
-                  "cursor-not-allowed bg-gray-400":
-                    !selectedGuideline || isLoadingConversation,
-                  "bg-llama-indigo hover:bg-indigo-700":
-                    selectedGuideline && !isLoadingConversation,
-                }
+                "mt-4 flex items-center justify-center rounded-lg px-4 py-2 font-medium text-white transition-colors",
+                selectedGuideline
+                  ? "bg-llama-indigo hover:bg-llama-indigo/90"
+                  : "cursor-not-allowed bg-gray-400"
               )}
             >
               {isLoadingConversation ? (
                 <LoadingSpinner />
               ) : (
                 <>
-                  Start Conversation
+                  Explore Guidelines
                   <AiOutlineArrowRight className="ml-2" />
                 </>
               )}

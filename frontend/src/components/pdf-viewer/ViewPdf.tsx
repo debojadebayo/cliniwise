@@ -32,6 +32,17 @@ export const ViewPdf: React.FC<ViewPdfProps> = ({ file }) => {
     zoomOutEnabled,
   } = usePDFViewer(file);
 
+  const getAssetUrl = (url: string) => {
+    // In development, proxy through backend
+    if (process.env.NODE_ENV === "development") {
+      const filename = url.split("/").pop();
+      return `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/document/assets/${filename}`;
+    }
+
+    // In production, use the URL directly (will be a CloudFront/CDN URL)
+    return url;
+  };
+
   if (!file || !file.url) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -39,6 +50,8 @@ export const ViewPdf: React.FC<ViewPdfProps> = ({ file }) => {
       </div>
     );
   }
+
+  const assetUrl = getAssetUrl(file.url);
 
   return (
     <div className="relative flex h-full flex-col">
@@ -63,7 +76,7 @@ export const ViewPdf: React.FC<ViewPdfProps> = ({ file }) => {
         <MemoizedVirtualizedPDF
           key={`${file.id}-${file.url}`}
           ref={pdfFocusRef}
-          file={file}
+          file={{ url: assetUrl }}
           setIndex={setCurrentPageNumber}
           scale={scale}
           setScaleFit={setScaleFit}
