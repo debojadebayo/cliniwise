@@ -194,48 +194,53 @@ export default function Conversation() {
         </div>
 
         <div className="flex flex-1 overflow-hidden">
-          {/* PDF Viewer Section */}
-          <div className="h-full w-1/2 border-r">{renderPdfViewer()}</div>
+          {/* PDF Viewer Section - Fixed in viewport */}
+          <div className="h-full w-1/2 border-r overflow-hidden">
+            {renderPdfViewer()}
+          </div>
 
-          {/* Chat Section */}
+          {/* Chat Section - Scrollable */}
           <div className="flex h-full w-1/2 flex-col">
-            <RenderConversations
-              messages={messages}
-              documents={selectedDocuments}
-              setUserMessage={setUserMessage}
-            />
-            <div className="border-t p-4">
-              <textarea
-                ref={textFocusRef}
-                value={userMessage}
-                onChange={handleTextChange}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    submit();
-                  }
-                }}
-                placeholder="Ask a question..."
-                className="w-full resize-none rounded-lg border p-2"
-                rows={1}
+            {/* Messages - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <RenderConversations
+                messages={messages}
+                isMessagePending={isMessagePending}
               />
-              <button
-                onClick={submit}
-                disabled={!userMessage || isMessagePending}
-                className="mt-2 rounded-lg bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
-              >
-                {isMessagePending ? (
-                  <span className="flex items-center">
-                    <span className="mr-2 animate-spin">⌛</span>
-                    Processing...
-                  </span>
-                ) : (
-                  <span className="flex items-center">
-                    <BsArrowUpCircle className="mr-2" />
-                    Send
-                  </span>
-                )}
-              </button>
+            </div>
+
+            {/* Input Section - Fixed at bottom */}
+            <div className="border-t bg-white p-4">
+              <div className="flex items-end">
+                <textarea
+                  ref={textFocusRef}
+                  value={userMessage}
+                  onChange={handleTextChange}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (!isMessagePending) {
+                        submit();
+                      }
+                    }
+                  }}
+                  placeholder="Ask a question..."
+                  className="mr-2 h-10 flex-1 resize-none rounded border p-2"
+                  disabled={isMessagePending}
+                />
+                <button
+                  onClick={submit}
+                  disabled={isMessagePending || !userMessage}
+                  className={`flex h-10 items-center rounded px-4 ${
+                    isMessagePending || !userMessage
+                      ? "cursor-not-allowed bg-gray-300"
+                      : "bg-llama-indigo text-white hover:bg-[#3B3775]"
+                  }`}
+                >
+                  <BsArrowUpCircle className="mr-2" />
+                  Send
+                </button>
+              </div>
             </div>
           </div>
         </div>

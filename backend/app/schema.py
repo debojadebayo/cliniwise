@@ -49,22 +49,19 @@ class Citation(BaseMetadataObject):
         return value
 
     @classmethod
-    def from_node(cls, node_w_score: NodeWithScore) -> "Citation":
-        node: BaseNode = node_w_score.node
-        page_number = int(node.source_node.metadata["page_label"])
-        document_id = node.source_node.metadata[DB_DOC_ID_KEY]
+    def from_node_with_score(cls, node: NodeWithScore, **kwargs) -> "Citation":
+        """Create a Citation from a NodeWithScore object"""
         return cls(
-            document_id=document_id,
-            text=node.get_content(),
-            page_number=page_number,
-            score=node_w_score.score,
+            document_id=node.node.metadata[DB_DOC_ID_KEY],
+            text=node.node.text,
+            page_number=node.node.metadata.get("page_number", 1),
+            score=node.score,
+            **kwargs,
         )
 
 
-class QuestionAnswerPair(BaseMetadataObject):
-    """
-    A question-answer pair that is used to store the sub-questions and answers
-    """
+class QuestionAnswerPair(BaseModel):
+    """A question-answer pair that is used to store the sub-questions and answers"""
 
     question: str
     answer: Optional[str]
@@ -73,25 +70,27 @@ class QuestionAnswerPair(BaseMetadataObject):
     @classmethod
     def from_sub_question_answer_pair(
         cls, sub_question_answer_pair: SubQuestionAnswerPair
-    ):
-        if sub_question_answer_pair.sources is None:
-            citations = None
-        else:
+    ) -> "QuestionAnswerPair":
+        """Create a QuestionAnswerPair from a SubQuestionAnswerPair object"""
+        citations = None
+        if (
+            sub_question_answer_pair.answer is not None
+            and sub_question_answer_pair.answer.source_nodes is not None
+        ):
             citations = [
-                Citation.from_node(node_w_score)
-                for node_w_score in sub_question_answer_pair.sources
-                if node_w_score.node.source_node is not None
-                and DB_DOC_ID_KEY in node_w_score.node.source_node.metadata
+                Citation.from_node_with_score(node)
+                for node in sub_question_answer_pair.answer.source_nodes
             ]
-        citations = citations or None
+
         return cls(
             question=sub_question_answer_pair.sub_q.sub_question,
-            answer=sub_question_answer_pair.answer,
+            answer=sub_question_answer_pair.answer.response
+            if sub_question_answer_pair.answer
+            else None,
             citations=citations,
         )
 
 
-# later will be Union[QuestionAnswerPair, more to add later... ]
 class SubProcessMetadataKeysEnum(str, Enum):
     SUB_QUESTION = EventPayload.SUB_QUESTION.value
 
@@ -100,14 +99,14 @@ class SubProcessMetadataKeysEnum(str, Enum):
 SubProcessMetadataMap = Dict[Union[SubProcessMetadataKeysEnum, str], Any]
 
 
-class MessageSubProcess(Base):
+class MessageSubProcess(BaseModel):
     message_id: UUID
     source: MessageSubProcessSourceEnum
     status: MessageSubProcessStatusEnum
     metadata_map: Optional[SubProcessMetadataMap]
 
 
-class Message(Base):
+class Message(BaseModel):
     conversation_id: UUID
     content: str
     role: MessageRoleEnum
@@ -120,69 +119,37 @@ class UserMessageCreate(BaseModel):
 
 
 class DocumentMetadataKeysEnum(str, Enum):
-    """
-    Enum for the keys of the metadata map for a document
-    """
-
-    SEC_DOCUMENT = "sec_document"
+    """Enum for the keys of the metadata map for a document"""
     CLINICAL_GUIDELINE = "clinical_guideline"
-
-
-class SecDocumentTypeEnum(str, Enum):
-    """
-    Enum for the type of sec document
-    """
-
-    TEN_K = "10-K"
-    TEN_Q = "10-Q"
 
 
 class EvidenceGradeEnum(str, Enum):
     """Enum for clinical guideline evidence grades"""
-    
-    GRADE_A = "A"  # High quality evidence
-    GRADE_B = "B"  # Moderate quality evidence
-    GRADE_C = "C"  # Low quality evidence
-    GRADE_D = "D"  # Very low quality evidence
-    GRADE_I = "I"  # Insufficient evidence
-    GOOD_PRACTICE = "GPP"  # Good Practice Point
-    EXPERT_OPINION = "EO"  # Expert Opinion
-    NOT_GRADED = "NG"  # Not Graded
+    GRADE_A = "A"
+    GRADE_B = "B"
+    GRADE_C = "C"
+    GRADE_D = "D"
+    GRADE_I = "I"
+    GOOD_PRACTICE = "GPP"
+    EXPERT_OPINION = "EO"
+    NOT_GRADED = "NG"
 
 
-class SecDocumentMetadata(BaseModel):
-    """
-    Metadata for a document that is a sec document
-    """
-
-    company_name: str
-    company_ticker: str
-    doc_type: SecDocumentTypeEnum
-    year: int
-    quarter: Optional[int]
-    accession_number: Optional[str]
-    cik: Optional[str]
-    period_of_report_date: Optional[datetime]
-    filed_as_of_date: Optional[datetime]
-    date_as_of_change: Optional[datetime]
-
-
-class ClinicalGuidelineMetadata(BaseMetadataObject):
+class ClinicalGuidelineMetadata(BaseModel):
     """Metadata for a clinical guideline document"""
-    
     title: str
     issuing_organization: str
     publication_date: Optional[datetime]
     version: Optional[str]
-    condition: Optional[str]  # Medical condition or disease
-    specialty: Optional[str]  # Medical specialty
+    condition: Optional[str]
+    specialty: Optional[str]
     target_population: Optional[str]
     evidence_grading_system: Optional[str]
     recommendation_count: Optional[int]
     last_update: Optional[datetime]
     next_review: Optional[datetime]
-    guideline_id: Optional[str]  # Organization's internal ID
-    
+    guideline_id: Optional[str]
+
     class Config:
         orm_mode = True
 

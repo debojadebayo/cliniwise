@@ -1,63 +1,59 @@
-import type { SecDocument, Ticker, DocumentType } from "~/types/document";
-import { SelectOption } from "~/types/selection";
+import type { ClinicalDocument, DocumentType } from "~/types/document";
+import type { SelectOption } from "~/types/selection";
 
-export function getAllTickers(documents: SecDocument[]): Ticker[] {
-  const result: Ticker[] = [];
+export function getAllConditions(documents: ClinicalDocument[]): string[] {
+  const result: string[] = [];
   const seen: { [key: string]: boolean } = {};
 
   for (const doc of documents) {
-    // Skip if we've seen this ticker before
-    if (seen[doc.ticker]) {
+    if (!doc.condition || seen[doc.condition]) {
       continue;
     }
 
-    seen[doc.ticker] = true;
-    result.push({
-      fullName: doc.fullName,
-      ticker: doc.ticker,
-    });
+    seen[doc.condition] = true;
+    result.push(doc.condition);
   }
 
   return result;
 }
 
-export function filterByTickerAndType(
-  ticker: string,
+export function filterByConditionAndType(
+  condition: string,
   docType: DocumentType,
-  documents: SecDocument[]
-): SecDocument[] {
-  if (!ticker) {
+  documents: ClinicalDocument[]
+): ClinicalDocument[] {
+  if (!condition) {
     return [];
   }
   return documents.filter(
-    (document) => document.ticker === ticker && document.docType === docType
+    (document) =>
+      document.condition === condition && document.documentType === docType
   );
 }
 
 export function findDocumentById(
   id: string,
-  documents: SecDocument[]
-): SecDocument | null {
+  documents: ClinicalDocument[]
+): ClinicalDocument | null {
   return documents.find((val) => val.id === id) || null;
 }
 
-export function sortDocuments(selectedDocuments: SecDocument[]): SecDocument[] {
+export function sortDocuments(
+  selectedDocuments: ClinicalDocument[]
+): ClinicalDocument[] {
   return selectedDocuments.sort((a, b) => {
-    // Sort by fullName
-    const nameComparison = a.fullName.localeCompare(b.fullName);
+    // Sort by title
+    const nameComparison = a.title.localeCompare(b.title);
     if (nameComparison !== 0) return nameComparison;
 
-    // If fullNames are equal, sort by year
-    return a.year.localeCompare(b.year);
+    // If titles are equal, sort by publication date
+    return (a.publicationDate || "").localeCompare(b.publicationDate || "");
   });
 }
 
 export function sortSelectOptions(
   options: SelectOption[] | null = []
 ): SelectOption[] {
-  if (!options) {
-    return [];
-  }
-
-  return options.sort((a, b) => parseInt(a.label) - parseInt(b.label));
+  if (!options) return [];
+  return options.sort((a, b) => a.label.localeCompare(b.label));
 }

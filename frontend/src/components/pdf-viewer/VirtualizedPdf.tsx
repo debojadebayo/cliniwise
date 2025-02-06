@@ -25,10 +25,11 @@ import "react-pdf/dist/esm/Page/TextLayer.css";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import { usePdfFocus } from "~/context/pdf";
 import { multiHighlight } from "~/utils/multi-line-highlight";
-
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 const pdfjsOptions = pdfjs.GlobalWorkerOptions;
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 const pdfjsVersion = pdfjs.version;
-
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 pdfjsOptions.workerSrc =
   "//unpkg.com/pdfjs-dist@" +
   String(pdfjsVersion) +
@@ -58,7 +59,6 @@ const PageRenderer: React.FC<PageRenderer> = ({
   listWidth,
   setPageInView,
 }) => {
-  console.log("VirtualizedPDF rendering with URL:", file.url);
   const { pdfFocusState } = usePdfFocus();
   const [shouldCenter, setShouldCenter] = useState(false);
   const [isHighlighted, setIsHighlighted] = useState(false);
@@ -115,32 +115,6 @@ const PageRenderer: React.FC<PageRenderer> = ({
     showPageCanvas();
   }, [showPageCanvas]);
 
-  const onPageRenderSuccess = useCallback(
-    (page: { width: number }) => {
-      // console.log("triggering rerender for page", index);
-      showPageCanvas();
-      maybeHighlight();
-      // react-pdf absolutely pins the pdf into the upper left corner
-      // so when the scale changes and the width is smaller than the parent
-      // container, we need to use flex box to center the pdf.
-      //
-      // why not always center the pdf? when this condition is not true,
-      // display: flex breaks scrolling. not quite sure why.
-      if (listWidth > page.width) {
-        setShouldCenter(true);
-      } else {
-        setShouldCenter(false);
-      }
-    },
-    [showPageCanvas, listWidth]
-  );
-
-  const documentFocused = pdfFocusState.documentId === file.id;
-
-  useEffect(() => {
-    maybeHighlight();
-  }, [documentFocused, inView]);
-
   const maybeHighlight = useCallback(
     debounce(() => {
       if (
@@ -158,6 +132,32 @@ const PageRenderer: React.FC<PageRenderer> = ({
     }, 50),
     [pdfFocusState.citation?.snippet, pageNumber, isHighlighted]
   );
+
+  const onPageRenderSuccess = useCallback(
+    (page: { width: number }) => {
+      // console.log("triggering rerender for page", index);
+      showPageCanvas();
+      maybeHighlight();
+      // react-pdf absolutely pins the pdf into the upper left corner
+      // so when the scale changes and the width is smaller than the parent
+      // container, we need to use flex box to center the pdf.
+      //
+      // why not always center the pdf? when this condition is not true,
+      // display: flex breaks scrolling. not quite sure why.
+      if (listWidth > page.width) {
+        setShouldCenter(true);
+      } else {
+        setShouldCenter(false);
+      }
+    },
+    [showPageCanvas, maybeHighlight, listWidth]
+  );
+
+  const documentFocused = pdfFocusState.documentId === file.id;
+
+  useEffect(() => {
+    maybeHighlight();
+  }, [documentFocused, maybeHighlight, inView]);
 
   return (
     <div

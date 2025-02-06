@@ -142,8 +142,9 @@ async def handle_chat_message(
             )
         )
         logger.debug("Engine received")
+
         templated_message = f"""
-Remember - if I have asked a relevant financial question, use your tools.
+Remember - if I have asked a relevant clinical question, I'm counting on you to provide helpful information from the guidelines.
 
 {user_message.content}
         """.strip()

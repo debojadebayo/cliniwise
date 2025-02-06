@@ -53,7 +53,6 @@ class PreviewPrefixedSettings(BaseSettings):
     OPENAI_API_KEY: str
     AWS_KEY: str
     AWS_SECRET: str
-    # POLYGON_IO_API_KEY: str
 
     class Config(AppConfig):
         env_prefix = "PREVIEW_" if is_pull_request or is_preview_env else ""
@@ -79,8 +78,6 @@ class Settings(PreviewPrefixedSettings):
     SENTRY_DSN: Optional[str]
     RENDER_GIT_COMMIT: Optional[str]
     LOADER_IO_VERIFICATION_STR: str = "loaderio-e51043c635e0f4656473d3570ae5d9ec"
-    SEC_EDGAR_COMPANY_NAME: str = "YourOrgName"
-    SEC_EDGAR_EMAIL: EmailStr = "you@example.com"
 
     # BACKEND_CORS_ORIGINS is a JSON-formatted list of origins
     # e.g: '["http://localhost", "http://localhost:4200", "http://localhost:3000", \
@@ -101,11 +98,20 @@ class Settings(PreviewPrefixedSettings):
         Used for setting S3 endpoint URL in the s3fs module.
         When running locally, this should be set to the localstack endpoint.
         """
+        return os.environ.get("S3_ENDPOINT_URL", "http://localhost:4566")
+
+    @property
+    def CDN_BASE_URL(self) -> str:
+        """
+        Base URL for accessing S3 assets.
+        Uses LocalStack endpoint in local development, AWS S3 in production/preview.
+        """
         if not self.RENDER:
-            return "http://localhost:4566"
-        return None
+            endpoint = os.environ.get("S3_ENDPOINT_URL", "http://localhost:4566")
+            return f"{endpoint}/{self.S3_ASSET_BUCKET_NAME}"
+        return f"https://{self.S3_ASSET_BUCKET_NAME}.s3.amazonaws.com"
 
-
+    
     @validator("BACKEND_CORS_ORIGINS", pre=True)
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
         if isinstance(v, str) and not v.startswith("["):
@@ -170,16 +176,5 @@ class Settings(PreviewPrefixedSettings):
         # TODO: before full release, set this to 0.1 for production
         return 0.07 if self.ENVIRONMENT == AppEnvironment.PRODUCTION else 1.0
 
-    @property 
-    def CDN_BASE_URL(self) -> str:
-        """
-        Base URL for accessing S3 assets.
-        Uses LocalStack endpoint in local development, AWS S3 in production/preview.
-        """
-        if not self.RENDER:
-            return f"http://localhost:4566/{self.S3_ASSET_BUCKET_NAME}"
-        return f"https://{self.S3_ASSET_BUCKET_NAME}.s3.amazonaws.com"
-
-    
 settings = Settings()
 os.environ["OPENAI_API_KEY"] = settings.OPENAI_API_KEY

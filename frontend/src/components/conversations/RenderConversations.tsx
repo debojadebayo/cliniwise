@@ -23,23 +23,25 @@ const CitationDisplay: React.FC<CitationDisplayProps> = ({ citation }) => {
 
   return (
     <div
-      className={`mx-1.5 mb-2 min-h-[25px] min-w-[160px] cursor-pointer rounded border-l-8 bg-gray-00 p-1 hover:bg-gray-15  ${
+      className={`mx-1.5 mb-2 min-h-[25px] min-w-[160px] cursor-pointer rounded border-l-8 bg-gray-00 p-1 hover:bg-gray-15 ${
         borderColors[citation.color]
       }`}
       onClick={() =>
         handleCitationClick(citation.documentId, citation.pageNumber)
       }
     >
-      <div className="flex items-center">
-        <div className="mr-1 text-xs font-bold text-black">
-          {citation.ticker}{" "}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
+          <div className="mr-1 text-xs font-bold text-black">
+            {citation.issuingOrganization}
+          </div>
+          <div className="text-[10px] text-gray-60">
+            p. {citation.pageNumber}
+          </div>
         </div>
-        <div className="mr-2 text-xs font-bold text-black">
-          ({citation.displayDate})
-        </div>
-        <div className="text-[10px]">p. {citation.pageNumber}</div>
+        <div className="text-[10px] text-gray-60">{citation.title}</div>
       </div>
-      <p className="line-clamp-2 text-[10px] font-light leading-3">
+      <p className="mt-1 line-clamp-2 text-[10px] font-light leading-3 text-gray-90">
         {citation.snippet}
       </p>
     </div>
@@ -130,16 +132,13 @@ const SubProcessDisplay: React.FC<SubProcessDisplayProps> = ({
                               <div className=" mr-2 flex w-full overflow-x-scroll pl-2 ">
                                 {subQuestion.citations?.map(
                                   (citation, citationIndex) => {
-                                    // get snippet and dispaly date from documentId
+                                    // get snippet and display date from documentId
                                     const citationDocument = documents.find(
                                       (doc) => doc.id === citation.document_id
                                     );
                                     if (!citationDocument) {
-                                      return;
+                                      return null;
                                     }
-                                    const yearDisplay = citationDocument.quarter
-                                      ? `${citationDocument.year} Q${citationDocument.quarter}`
-                                      : `${citationDocument.year}`;
                                     return (
                                       <CitationDisplay
                                         key={`${messageId}-${subProcessIndex}-${subQuestionIndex}-${citationIndex}`}
@@ -148,9 +147,9 @@ const SubProcessDisplay: React.FC<SubProcessDisplayProps> = ({
                                             documentId: citation.document_id,
                                             snippet: citation.text,
                                             pageNumber: citation.page_number,
-                                            ticker: citationDocument?.ticker,
-                                            displayDate: yearDisplay,
-                                            color: citationDocument.color,
+                                            issuingOrganization:
+                                              citationDocument?.issuingOrganization,
+                                            title: citationDocument?.title,
                                           } as Citation
                                         }
                                       />

@@ -10,9 +10,6 @@ interface ViewPdfProps {
 }
 
 export const ViewPdf: React.FC<ViewPdfProps> = ({ file }) => {
-  console.log("ViewPdf rendering with file:", file);
-
-  // Use the S3 URL directly from the file object
   const {
     scrolledIndex,
     setCurrentPageNumber,
@@ -32,15 +29,10 @@ export const ViewPdf: React.FC<ViewPdfProps> = ({ file }) => {
     zoomOutEnabled,
   } = usePDFViewer(file);
 
-  const getAssetUrl = (url: string) => {
-    // In development, proxy through backend
-    if (process.env.NODE_ENV === "development") {
-      const filename = url.split("/").pop();
-      return `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/document/assets/${filename}`;
-    }
-
-    // In production, use the URL directly (will be a CloudFront/CDN URL)
-    return url;
+  const getProxiedUrl = (url: string) => {
+    const filename = url.split('/').pop();
+    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/+$/, '') || 'http://localhost:8000';
+    return `${baseUrl}/api/document/assets/${filename}`;
   };
 
   if (!file || !file.url) {
@@ -50,8 +42,6 @@ export const ViewPdf: React.FC<ViewPdfProps> = ({ file }) => {
       </div>
     );
   }
-
-  const assetUrl = getAssetUrl(file.url);
 
   return (
     <div className="relative flex h-full flex-col">
@@ -74,9 +64,9 @@ export const ViewPdf: React.FC<ViewPdfProps> = ({ file }) => {
 
       <div className="flex-1 overflow-hidden">
         <MemoizedVirtualizedPDF
-          key={`${file.id}-${file.url}`}
+          key={`${file.id}`}
           ref={pdfFocusRef}
-          file={{ url: assetUrl }}
+          file={{ ...file, url: getProxiedUrl(file.url) }}
           setIndex={setCurrentPageNumber}
           scale={scale}
           setScaleFit={setScaleFit}

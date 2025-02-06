@@ -23,8 +23,8 @@ export interface Citation {
   documentId: string;
   snippet: string;
   pageNumber: number;
-  ticker: string;
-  displayDate: string;
+  issuingOrganization: string;
+  title: string;
   color: DocumentColorEnum;
 }
 
