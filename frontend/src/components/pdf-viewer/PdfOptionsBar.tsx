@@ -7,7 +7,6 @@ import {
 import { PiCaretDownBold, PiCaretUpBold } from "react-icons/pi";
 import { zoomLevels } from "~/hooks/usePdfViewer";
 import type { ClinicalDocument } from "~/types/document";
-import { borderColors } from "~/utils/colors";
 
 interface PDFOptionsBarProps {
   file: ClinicalDocument;
@@ -73,16 +72,8 @@ export const PDFOptionsBar: React.FC<PDFOptionsBarProps> = ({
       className={`flex h-[44px] w-full items-center justify-between border-b-2 `}
     >
       <div className="ml-3 flex w-1/2 items-center justify-start ">
-        <div
-          className={`flex items-center justify-center border-l-4 pl-2 ${
-            borderColors[file.color]
-          } `}
-        >
-          <div className="text font-bold">{file.ticker}</div>
-          <div className="ml-2">
-            {" "}
-            {file.year} {file.quarter && `Q${file.quarter}`}
-          </div>
+        <div className={`flex items-center justify-center border-l-4 pl-2 `}>
+          <div className="text font-bold">{file.title}</div>
         </div>
       </div>
       <div className="flex flex-grow items-center justify-center border-l border-l-gray-30">

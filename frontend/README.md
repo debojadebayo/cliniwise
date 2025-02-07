@@ -1,26 +1,137 @@
-# SEC Insights Frontend
+# CliniWise Frontend
 
-This is SEC Insights, a tool that let's you analyze multiple financial documents, powered by LlamaIndex. [Live URL](https://secinsights.ai/)
+The frontend for CliniWise, a modern clinical guidelines management system. Built with React, TypeScript, and Next.js.
 
-## Technical Details
+## 🏗️ Architecture
 
-Built with `next.js`, `tailwindcss`, and `typescript react`, based on the [T3 starter kit](https://create.t3.gg/en/usage/next-js).
+The frontend is organized into several key components:
 
-## Architecture
+### 📱 Main Routes
 
-This app consists of two main routes,
+1. `/` - Home/Landing Page
 
-1. `/`, located in `src/pages/index.tsx`. This route is the landing page, and consists of the document selector and a marketing section.
-2. `/conversation/{conversation_id}`, located in `src/pages/conversation/[id].tsx` This page consists of the chat window on the left hand side, and the pdf viewer on the right hand side.
+   - Document selector for clinical guidelines
+   - Overview of available medical documentation
 
-- PDFs are rendered using `react-pdf`; a single pdf is rendered by the `VirtualizedPdf.tsx` component
-- The Chat component is located in `RenderConversations.tsx`
+2. `/conversation/{conversation_id}`
+   - Interactive chat window for querying documents
+   - PDF viewer with highlighting capabilities
+   - Real-time conversation history
 
-## How to develop locally
+### 🧩 Key Components
 
-1. `npm i`
-2. `npm run dev`
+- `pdf-viewer/`
 
-3. And before pushing to the repo, `npm run build` to catch any typescript errors (TODO: pre-commit hook)
+  - `ViewPdf.tsx`: Main PDF rendering component
+  - `PdfOptionsBar.tsx`: Controls for PDF navigation and interaction
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+- `conversations/`
+
+  - `RenderConversations.tsx`: Chat interface for document interactions
+  - `MessageComponent.tsx`: Individual message rendering
+
+- `common/`
+  - Reusable UI components
+  - Shared utilities and hooks
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 16 or later
+- npm or yarn
+- Backend services running (see main README)
+
+### Installation
+
+1. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+2. Start the development server:
+
+   ```bash
+   npm run dev
+   ```
+
+3. Access the application at:
+   ```
+   http://localhost:3000
+   ```
+
+## 💻 Development
+
+### Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run lint` - Run ESLint
+- `npm run test` - Run tests
+- `npm run preview` - Preview production build
+
+### Code Style
+
+- TypeScript for type safety
+- ESLint + Prettier for code formatting
+- Component-based architecture
+- CSS Modules with Tailwind CSS
+
+### Best Practices
+
+1. **Components**
+
+   - Use functional components with hooks
+   - Keep components small and focused
+   - Implement proper error boundaries
+
+2. **State Management**
+
+   - Context API for global state
+   - Local state for component-specific data
+
+3. **Performance**
+   - Lazy loading for routes
+   - Memoization where appropriate
+   - Optimized PDF rendering
+
+## 📦 Building for Production
+
+```bash
+# Create production build
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+## 🔗 API Integration
+
+The frontend communicates with the backend through:
+
+- REST API endpoints for data operations
+- WebSocket connections for real-time updates
+- S3 for PDF document access
+
+## 🎨 UI/UX Guidelines
+
+- Modern, clean interface
+- Responsive design for all screen sizes
+- Accessibility compliance
+- Consistent color scheme and typography
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## 📚 Resources
+
+- [React Documentation](https://react.dev/)
+- [TypeScript Documentation](https://www.typescriptlang.org/)
+- [Nextjs Documentation](https://nextjs.org/)
+- [Tailwind CSS Documentation](https://tailwindcss.com/)

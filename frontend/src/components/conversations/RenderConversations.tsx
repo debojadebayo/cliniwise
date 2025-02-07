@@ -9,7 +9,6 @@ import { HiOutlineChatAlt2 } from "react-icons/hi";
 import { usePdfFocus } from "~/context/pdf";
 import { AiFillExclamationCircle, AiOutlineLink } from "react-icons/ai";
 import type { ClinicalDocument } from "~/types/document";
-import { borderColors } from "~/utils/colors";
 import { formatDisplayDate } from "~/utils/timezone";
 
 interface CitationDisplayProps {
@@ -23,9 +22,7 @@ const CitationDisplay: React.FC<CitationDisplayProps> = ({ citation }) => {
 
   return (
     <div
-      className={`mx-1.5 mb-2 min-h-[25px] min-w-[160px] cursor-pointer rounded border-l-8 bg-gray-00 p-1 hover:bg-gray-15 ${
-        borderColors[citation.color]
-      }`}
+      className="mx-1.5 mb-2 min-h-[25px] min-w-[160px] cursor-pointer rounded border-l-8 bg-gray-00 p-1 hover:bg-gray-15"
       onClick={() =>
         handleCitationClick(citation.documentId, citation.pageNumber)
       }
