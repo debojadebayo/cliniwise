@@ -30,13 +30,13 @@ class GuidelineProcessor:
         Process:
             1. Sets up PDFReader for document loading
             2. Configures SentenceSplitter with:
-               - 512 token chunk size for precise retrieval
-               - 50 token overlap for context preservation
+               - 512 token chunk size for more precise retrieval
+               - 20 token overlap for minimal redundancy while maintaining context
         """
         self.reader = PDFReader()
         self.node_parser = SentenceSplitter.from_defaults(
             chunk_size=512,  # Smaller chunks for more precise retrieval
-            chunk_overlap=50
+            chunk_overlap=20  # Keep the reduced overlap for less redundancy
         )
     
     def process_document(

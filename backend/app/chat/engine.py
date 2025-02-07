@@ -192,7 +192,7 @@ def get_chat_history(
 
 def get_embedding_model(document_type: str = None) -> BaseEmbedding:
     """
-    Selects appropriate embedding model based on document type.
+    Selects embeding model llama version currently doesnt support the larger embeddings model so I am using ADA_002
     
     Process:
         1. Determines document category (clinical/financial)
@@ -256,49 +256,56 @@ async def build_doc_id_to_index_map(
     """
     persist_dir = f"{settings.S3_BUCKET_NAME}"
     vector_store = await get_vector_store_singleton()
-    storage_context = get_storage_context(persist_dir, vector_store, fs=fs)
     
-    doc_id_to_index = {}
-    for document in documents:
-        doc_id = str(document.id)
-        
-        # Get document-specific embedding model
-        document_type = document.metadata_map.get("document_type")
-        embedding_model = get_embedding_model(document_type)
-        
-        # Create document-specific service context with appropriate embedding model
-        doc_service_context = ServiceContext.from_defaults(
-            llm=service_context.llm,
-            embed_model=embedding_model,
-            callback_manager=service_context.callback_manager,
-        )
-        
-        # Try to load existing index or create new one
+    try:
         try:
-            indices = load_indices_from_storage(
-                storage_context,
-                index_ids=[doc_id],
-                service_context=doc_service_context,
-            )
-            if indices:
-                doc_id_to_index[doc_id] = indices[0]
-                logger.debug(f"Loaded existing index for document {doc_id}")
-                continue
-        except (ValueError, FileNotFoundError) as e:
-            logger.info(f"Could not load index for document {doc_id}: {str(e)}")
+            # Try to get existing storage context with vector store
+            storage_context = get_storage_context(persist_dir, vector_store, fs=fs)
+        except FileNotFoundError:
+            logger.info("Could not find storage context in S3. Creating new storage context.")
+            storage_context = StorageContext.from_defaults(vector_store=vector_store, fs=fs)
+            storage_context.persist(persist_dir=persist_dir, fs=fs)
         
-        # Create new index if loading failed
-        llama_index_docs = fetch_and_read_document(document)
-        index = VectorStoreIndex(
-            nodes=llama_index_docs,
-            storage_context=storage_context,
-            service_context=doc_service_context,
+        # Try to load existing indices
+        index_ids = [str(doc.id) for doc in documents]
+        indices = load_indices_from_storage(
+            storage_context,
+            index_ids=index_ids,
+            service_context=service_context,
         )
-        index.set_index_id(doc_id)
-        index.storage_context.persist(persist_dir=persist_dir, fs=fs)
-        doc_id_to_index[doc_id] = index
-        logger.info(f"Created new index for document {doc_id}")
-    
+        doc_id_to_index = dict(zip(index_ids, indices))
+        logger.debug("Loaded indices from storage.")
+        
+    except ValueError:
+        logger.error(
+            "Failed to load indices from storage. Creating new indices. "
+            "If you're running the seed_db script, this is normal and expected."
+        )
+        # Create new storage context with vector store
+        storage_context = StorageContext.from_defaults(
+            persist_dir=persist_dir,
+            vector_store=vector_store,
+            fs=fs
+        )
+        
+        doc_id_to_index = {}
+        for doc in documents:
+            # Process document and add to docstore
+            llama_index_docs = fetch_and_read_document(doc)
+            storage_context.docstore.add_documents(llama_index_docs)
+            
+            # Create index with both vector store and docstore
+            index = VectorStoreIndex.from_documents(
+                llama_index_docs,
+                storage_context=storage_context,
+                service_context=service_context,
+            )
+            index.set_index_id(str(doc.id))
+            
+            # Persist storage context to S3
+            index.storage_context.persist(persist_dir=persist_dir, fs=fs)
+            doc_id_to_index[str(doc.id)] = index
+            
     return doc_id_to_index
 
 

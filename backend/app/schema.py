@@ -105,6 +105,9 @@ class MessageSubProcess(BaseModel):
     status: MessageSubProcessStatusEnum
     metadata_map: Optional[SubProcessMetadataMap]
 
+    class Config:
+        orm_mode = True
+
 
 class Message(BaseModel):
     conversation_id: UUID
@@ -112,6 +115,9 @@ class Message(BaseModel):
     role: MessageRoleEnum
     status: MessageStatusEnum
     sub_processes: List[MessageSubProcess]
+
+    class Config:
+        orm_mode = True
 
 
 class UserMessageCreate(BaseModel):
