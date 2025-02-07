@@ -43,7 +43,6 @@ from app.schema import (
     Document as DocumentSchema,
     Conversation as ConversationSchema,
     DocumentMetadataKeysEnum,
-    SecDocumentMetadata,
     ClinicalGuidelineMetadata,
 )
 from app.models.db import MessageRoleEnum, MessageStatusEnum
@@ -55,7 +54,7 @@ from app.chat.constants import (
 )
 from app.chat.utils import build_title_for_document
 from app.chat.pg_vector import get_vector_store_singleton
-from app.chat.qa_response_synth import get_custom_response_synth
+from app.chat.qa_response_synth import get_clinical_response_synth
 from llama_index.retrievers import VectorIndexRetriever
 from llama_index.response_synthesizers.factory import get_response_synthesizer
 
@@ -205,8 +204,9 @@ def get_embedding_model(document_type: str = None) -> BaseEmbedding:
     """
     return OpenAIEmbedding(
         mode=OpenAIEmbeddingMode.SIMILARITY_MODE,
-        model_type=OpenAIEmbeddingModelType.TEXT_EMBED_3_LARGE,
+        model_type=OpenAIEmbeddingModelType.TEXT_EMBED_ADA_002,
     )
+
 
 def get_tool_service_context(
     callback_handlers: List[BaseCallbackHandler],
@@ -335,7 +335,7 @@ def index_to_query_engine(
     )
     
     # Create response synthesizer
-    response_synthesizer = get_custom_response_synth(
+    response_synthesizer = get_clinical_response_synth(
         service_context=index.service_context,
         documents=[doc for doc in documents if str(doc.id) == doc_id]
     )

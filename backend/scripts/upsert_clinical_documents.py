@@ -15,7 +15,7 @@ from app.api import crud
 from app.core.config import settings
 
 DEFAULT_URL_BASE = "http://localhost:4566"  # LocalStack endpoint
-DEFAULT_DOC_DIR = "clinical_guidelines/"
+DEFAULT_DOC_DIR = "example_guidelines/"
 
 async def upsert_single_document(doc_dir: str, guideline_file: Path, metadata: dict, url_base: str):
     """
