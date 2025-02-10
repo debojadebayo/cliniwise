@@ -96,9 +96,12 @@ class Settings(PreviewPrefixedSettings):
     def S3_ENDPOINT_URL(self) -> str:
         """
         Used for setting S3 endpoint URL in the s3fs module.
-        When running locally, this should be set to the localstack endpoint.
+        When running locally with Docker, this should be set to the localstack service name.
         """
-        return os.environ.get("S3_ENDPOINT_URL", "http://localhost:4566")
+        if self.RENDER:
+            return None
+        # Use the Docker service name instead of localhost
+        return os.environ.get("S3_ENDPOINT_URL", "http://localstack:4566")
 
     @property
     def CDN_BASE_URL(self) -> str:
@@ -107,7 +110,8 @@ class Settings(PreviewPrefixedSettings):
         Uses LocalStack endpoint in local development, AWS S3 in production/preview.
         """
         if not self.RENDER:
-            endpoint = os.environ.get("S3_ENDPOINT_URL", "http://localhost:4566")
+            # Use the Docker service name instead of localhost
+            endpoint = os.environ.get("S3_ENDPOINT_URL", "http://localstack:4566")
             return f"{endpoint}/{self.S3_ASSET_BUCKET_NAME}"
         return f"https://{self.S3_ASSET_BUCKET_NAME}.s3.amazonaws.com"
 

@@ -10,6 +10,7 @@ from llama_index import (
     VectorStoreIndex,
     StorageContext,
     load_indices_from_storage,
+    Document,
 )
 from llama_index.vector_stores.types import VectorStore, MetadataFilters, ExactMatchFilter
 from tempfile import TemporaryDirectory
@@ -90,51 +91,64 @@ def get_s3_fs() -> AsyncFileSystem:
 
 def fetch_and_read_document(
     document: DocumentSchema,
-) -> List[LlamaIndexDocument]:
+) -> List[Document]:
     """
-    Downloads and processes a document from its URL into indexable chunks.
+    Downloads and processes a clinical guideline document from S3 into indexable documents.
     
     Process:
-        1. Downloads document to temporary directory
-        2. Determines document type from metadata
-        3. For clinical guidelines:
-           - Uses GuidelineProcessor with specialized chunking
-           - Adds clinical metadata to each chunk
-        4. For other documents:
-           - Uses standard PDFReader
-           - Adds basic document metadata
-        5. Returns list of processed document chunks
+        1. Downloads document from S3 to temporary directory
+        2. Uses GuidelineProcessor with specialized chunking
+        3. Adds clinical metadata to each chunk
+        4. Returns list of processed documents
     """
     with TemporaryDirectory() as temp_dir:
         temp_file_path = Path(temp_dir) / f"{str(document.id)}.pdf"
-        # Download the file
-        with open(temp_file_path, "wb") as temp_file:
-            with requests.get(document.url, stream=True) as r:
-                r.raise_for_status()
-                for chunk in r.iter_content(chunk_size=8192):
-                    temp_file.write(chunk)
-            temp_file.seek(0)
         
-        # Determine document type and process accordingly
-        if DocumentMetadataKeysEnum.CLINICAL_GUIDELINE in document.metadata_map:
-            # Process clinical guideline
-            from app.clinical.document_processor import GuidelineProcessor
-            processor = GuidelineProcessor()
-            nodes = processor.process_document(
-                temp_file_path,
-                metadata={
-                    DB_DOC_ID_KEY: str(document.id),
-                    DocumentMetadataKeysEnum.CLINICAL_GUIDELINE: document.metadata_map[DocumentMetadataKeysEnum.CLINICAL_GUIDELINE]
-                }
+        # Use the existing S3 filesystem initialization
+        s3 = get_s3_fs()
+        
+        # Get the bucket and key from the URL
+        # URL format: http://localstack:4566/clinical-guidelines-assets/ehae178.pdf
+        bucket = settings.S3_ASSET_BUCKET_NAME
+        key = document.url.split('/')[-1]
+        s3_path = f"{bucket}/{key}"
+        
+        print(f"Downloading {s3_path} from S3...")
+        try:
+            # Download file from S3 in chunks
+            with s3.open(s3_path, 'rb') as s3_file, open(temp_file_path, 'wb') as local_file:
+                while True:
+                    chunk = s3_file.read(8192)  # Read in 8KB chunks
+                    if not chunk:
+                        break
+                    local_file.write(chunk)
+        except Exception as e:
+            print(f"Error downloading from S3: {e}")
+            print(f"S3 endpoint URL: {settings.S3_ENDPOINT_URL}")
+            print(f"Bucket: {bucket}")
+            print(f"Key: {key}")
+            raise
+
+        # Process clinical guideline
+        from app.clinical.document_processor import GuidelineProcessor
+        processor = GuidelineProcessor()
+        nodes = processor.process_document(
+            temp_file_path,
+            metadata={
+                DB_DOC_ID_KEY: str(document.id),
+                DocumentMetadataKeysEnum.CLINICAL_GUIDELINE: document.metadata_map[DocumentMetadataKeysEnum.CLINICAL_GUIDELINE]
+            }
+        )
+        
+        # Convert nodes to documents
+        return [
+            Document(
+                text=node.text,
+                doc_id=str(document.id),
+                metadata=node.metadata or {}
             )
-            return nodes
-        else:
-            # Default PDF processing for other document types
-            reader = PDFReader()
-            return reader.load_data(
-                temp_file_path, 
-                extra_info={DB_DOC_ID_KEY: str(document.id)}
-            )
+            for node in nodes
+        ]
 
 
 def build_description_for_document(document: DocumentSchema) -> str:
@@ -149,7 +163,7 @@ def build_description_for_document(document: DocumentSchema) -> str:
         3. Falls back to basic description if metadata missing
     """
     
-    for DocumentMetadataKeysEnum.CLINICAL_GUIDELINE in document.metadata_map:
+    if DocumentMetadataKeysEnum.CLINICAL_GUIDELINE in document.metadata_map:
         clinical_metadata = ClinicalGuidelineMetadata.parse_obj(
             document.metadata_map[DocumentMetadataKeysEnum.CLINICAL_GUIDELINE]
         )
@@ -292,6 +306,13 @@ async def build_doc_id_to_index_map(
         for doc in documents:
             # Process document and add to docstore
             llama_index_docs = fetch_and_read_document(doc)
+            
+            # Set document ID in extra_info for each node
+            for node in llama_index_docs:
+                if not node.extra_info:
+                    node.extra_info = {}
+                node.extra_info["doc_id"] = str(doc.id)
+            
             storage_context.docstore.add_documents(llama_index_docs)
             
             # Create index with both vector store and docstore
@@ -424,7 +445,7 @@ async def get_chat_engine(
         for doc_id, index in doc_id_to_index.items()
     ]
 
-    response_synth = get_custom_response_synth(service_context, conversation.documents)
+    response_synth = get_clinical_response_synth(service_context, conversation.documents)
 
     clinical_query_engine = SubQuestionQueryEngine.from_defaults(
         query_engine_tools=vector_query_engine_tools,

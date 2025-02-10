@@ -82,5 +82,5 @@ seed_db_local:
 	echo "Seeding database for local."
 	docker compose create db
 	docker compose start db
-	make setup_localstack
+	# make setup_localstack
 	poetry run python scripts/seed_db.py --include_clinical=true
