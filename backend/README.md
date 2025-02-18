@@ -16,18 +16,11 @@
     - This spins up the Postgres 15 DB & Localstack in their own docker containers.
     - The server will not run in a container but will instead run directly on your OS.
         - This is to allow for use of debugging tools like `pdb`
-1. Lastly, you will likely want to populate your local database with some sample SEC filings
-    - We have a script for this! But first, open your `.env` file and replace the placeholder value for the `OPENAI_API_KEY` with your own OpenAI API key
+1. I've got a directory that has sample clinical guidelines. There's a handy script that I've lifted from SEC insights to set this up. Run `make seed_db` to seed the database with the existing documents     
         - At some point you will want to do the same for the other secret keys in here like `AWS_KEY`, & `AWS_SECRET`
     - Source the file again with `set -a` then `source .env`
-    - Run `make seed_db_local`
         - If this step fails, you may find it helpful to run `make refresh_db` to wipe your local database and re-start with emptied tables.
     - Done 🏁! You can run `make run` again and you should see some documents loaded at http://localhost:8000/api/document
-
-For any issues in setting up the above or during the rest of your development, you can check for solutions in the following places:
-- [`backend/troubleshooting.md`](https://github.com/run-llama/sec-insights/blob/main/backend/troubleshooting.md)
-- [Open & already closed Github Issues](https://github.com/run-llama/sec-insights/issues?q=is%3Aissue+is%3Aclosed)
-- The [#sec-insights discord channel](https://discord.com/channels/1059199217496772688/1150942525968879636)
 
 ## Scripts
 The `scripts/` folder contains several scripts that are useful for both operations and development.
